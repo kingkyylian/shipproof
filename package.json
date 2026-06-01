@@ -3,10 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "description": "Proof reports for AI-generated code before merge.",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kingkyylian/shipproof.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kingkyylian/shipproof/issues"
+  },
+  "homepage": "https://github.com/kingkyylian/shipproof#readme",
   "bin": {
     "shipproof": "./bin/shipproof.js"
   },
+  "files": [
+    "action.yml",
+    "CHANGELOG.md",
+    "bin/",
+    "src/",
+    "docs/configuration.md",
+    "docs/report-schema.md",
+    "docs/live-github-verification.md"
+  ],
   "scripts": {
     "test": "node --test",
     "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
