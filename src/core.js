@@ -1,4 +1,5 @@
 import { buildSecurityCheck, calculateShipScore } from "./security.js";
+import { createAgentFeedbackPrompt } from "./agent-feedback.js";
 import { resolveShipProofConfig } from "./config.js";
 
 const COMMAND_ORDER = [
@@ -104,6 +105,16 @@ export function createProofReport({
     thresholds: resolvedConfig.score
   });
   const suggestedNextTests = suggestNextTests(risks);
+  const agentFeedbackPrompt = createAgentFeedbackPrompt({
+    decision,
+    status,
+    score,
+    checks: checkResults,
+    risks,
+    securityFindings,
+    suggestedNextTests,
+    changedFiles
+  });
   const payload = {
     schemaVersion: "1.0",
     status,
@@ -113,7 +124,8 @@ export function createProofReport({
     checks: checkResults,
     risks,
     securityFindings,
-    suggestedNextTests
+    suggestedNextTests,
+    agentFeedbackPrompt
   };
 
   return {
@@ -203,7 +215,17 @@ function isRequiredCheck(value, fallback) {
   return fallback;
 }
 
-export function renderProofReport({ status, decision, score, generatedAt, checks, risks, securityFindings = [], suggestedNextTests }) {
+export function renderProofReport({
+  status,
+  decision,
+  score,
+  generatedAt,
+  checks,
+  risks,
+  securityFindings = [],
+  suggestedNextTests,
+  agentFeedbackPrompt
+}) {
   const lines = [
     "# ShipProof Report",
     "",
@@ -259,6 +281,10 @@ export function renderProofReport({ status, decision, score, generatedAt, checks
     for (const test of suggestedNextTests) {
       lines.push(`- ${test}`);
     }
+  }
+
+  if (agentFeedbackPrompt) {
+    lines.push("", "## Agent Feedback Prompt", "", "```text", agentFeedbackPrompt, "```");
   }
 
   lines.push("");

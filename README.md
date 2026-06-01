@@ -13,6 +13,7 @@ ShipProof is a verification layer for AI-generated code. It does not write code 
 - Produces a `ship`, `review`, or `no-ship` decision with a 0-100 score.
 - Prints a Markdown report suitable for a GitHub PR comment.
 - Writes a JSON report payload with `schemaVersion: "1.0"` in GitHub mode.
+- Generates a focused agent feedback prompt for `review` and `no-ship` reports.
 
 ## Usage
 
@@ -22,6 +23,7 @@ npm run smoke:github-mock
 npm run shipproof -- --changed src/core.js,test/core.test.js
 npm run shipproof -- --changed src/app/login/page.tsx --browser-base-url http://127.0.0.1:3000
 npm run shipproof -- --changed src/core.js --config shipproof.config.json --json-report-path /tmp/shipproof-report.json
+npm run shipproof -- --changed src/api/route.ts --agent-prompt
 ```
 
 If `--changed` is omitted, ShipProof reads changed files from:

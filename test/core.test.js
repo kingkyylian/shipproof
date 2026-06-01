@@ -257,6 +257,8 @@ describe("createProofReport", () => {
     assert.equal(report.decision, "no-ship");
     assert.equal(report.score, 29);
     assert.match(report.markdown, /## Security Findings/);
+    assert.match(report.markdown, /## Agent Feedback Prompt/);
+    assert.match(report.agentFeedbackPrompt, /Fix the ShipProof failures before merge/);
   });
 
   it("includes a schema version and applies configured score thresholds", () => {

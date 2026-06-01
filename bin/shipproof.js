@@ -28,7 +28,8 @@ if (args.includes("--help") || args.includes("-h")) {
     "  --config <path>           Read ShipProof configuration from a JSON file.",
     "  --browser-base-url <url>  Reuse an existing dev server instead of starting one.",
     "  --screenshot-dir <path>   Screenshot output directory. Default: shipproof-screenshots.",
-    "  --json-report-path <path> Write the full JSON report payload to a file."
+    "  --json-report-path <path> Write the full JSON report payload to a file.",
+    "  --agent-prompt            Print only the agent feedback prompt when one is needed."
   ].join("\n"));
   process.exit(0);
 }
@@ -42,17 +43,25 @@ if (args[0] === "run" || args[0] === "github") {
 try {
   if (mode === "github") {
     const result = await runGitHubMode(args);
-    console.log(result.report.markdown);
+    console.log(formatCliOutput(result.report, args));
     console.error(`ShipProof report written to ${result.reportPath}; PR comment ${result.commentAction}.`);
     process.exitCode = result.report.status === "failed" ? 1 : 0;
   } else {
     const report = await runLocalMode(args);
-    console.log(report.markdown);
+    console.log(formatCliOutput(report, args));
     process.exitCode = report.status === "failed" ? 1 : 0;
   }
 } catch (error) {
   console.error(`ShipProof failed: ${error.message}`);
   process.exitCode = 2;
+}
+
+function formatCliOutput(report, values) {
+  if (values.includes("--agent-prompt")) {
+    return report.agentFeedbackPrompt ?? "No agent feedback prompt needed.";
+  }
+
+  return report.markdown;
 }
 
 async function runLocalMode(values) {

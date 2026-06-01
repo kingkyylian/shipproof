@@ -20,6 +20,7 @@ ShipProof writes two report views:
   "risks": [],
   "securityFindings": [],
   "suggestedNextTests": [],
+  "agentFeedbackPrompt": null,
   "markdown": "# ShipProof Report\n..."
 }
 ```
@@ -79,3 +80,17 @@ Each finding has:
 ```
 
 Future schema versions may add line numbers, allowlist metadata, and SARIF references.
+
+## Agent Feedback Prompt
+
+`agentFeedbackPrompt` is `null` for clean `ship` reports. For `review` and `no-ship` reports, it contains a concise prompt that can be pasted back into a coding agent.
+
+The prompt includes:
+
+- Current decision, score, and status.
+- Failed or incomplete checks.
+- Security findings.
+- Risk areas.
+- Suggested next tests.
+- Scope constraints.
+- A ShipProof rerun command with the changed file list when available.

@@ -6,7 +6,9 @@ The format follows Keep a Changelog style categories, and this project uses sema
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Agent feedback prompts for `review` and `no-ship` reports.
 
 ## 0.1.0 - 2026-06-01
 
