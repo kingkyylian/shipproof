@@ -53,12 +53,20 @@ export async function runGitHubProof({
   let commentAction = "skipped";
 
   if (context && request && env.INPUT_COMMENT !== "false") {
-    const commentResult = await upsertShipProofComment({
-      context,
-      markdown: report.markdown,
-      request
-    });
-    commentAction = commentResult.action;
+    try {
+      const commentResult = await upsertShipProofComment({
+        context,
+        markdown: report.markdown,
+        request
+      });
+      commentAction = commentResult.action;
+    } catch (error) {
+      if (!isCommentPermissionError(error)) {
+        throw error;
+      }
+
+      commentAction = "skipped-permission";
+    }
   }
 
   return {
@@ -68,6 +76,10 @@ export async function runGitHubProof({
     changedFiles: resolvedChangedFiles,
     commentAction
   };
+}
+
+function isCommentPermissionError(error) {
+  return error?.status === 403 || /resource not accessible by integration|forbidden/i.test(error?.message ?? "");
 }
 
 function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {

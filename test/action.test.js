@@ -86,6 +86,39 @@ describe("runGitHubProof", () => {
     assert.deepEqual(requests, ["/repos/acme/demo/pulls/42/files?per_page=100&page=1"]);
   });
 
+  it("keeps artifacts and summary when comment permissions are unavailable", async () => {
+    const writes = [];
+    const summaries = [];
+
+    const result = await runGitHubProof({
+      packageJson: { scripts: { test: "node --test" } },
+      event: { pull_request: { number: 42 } },
+      env: {
+        GITHUB_REPOSITORY: "acme/demo",
+        INPUT_REPORT_PATH: "artifacts/proof.md"
+      },
+      changedFiles: ["src/app/page.tsx"],
+      executeCommand: async () => ({ exitCode: 0, durationMs: 25 }),
+      request: async (path) => {
+        if (path.endsWith("/comments?per_page=100")) {
+          const error = new Error("GitHub API 403 for comments: Resource not accessible by integration");
+          error.status = 403;
+          throw error;
+        }
+
+        return [];
+      },
+      writeReport: async (file, markdown) => writes.push({ file, markdown }),
+      writeJsonReport: async () => {},
+      appendSummary: async (markdown) => summaries.push(markdown)
+    });
+
+    assert.equal(result.commentAction, "skipped-permission");
+    assert.equal(writes.length, 1);
+    assert.equal(summaries.length, 1);
+    assert.match(writes[0].markdown, /# ShipProof Report/);
+  });
+
   it("uses an explicit changed file list instead of reading PR files", async () => {
     const requests = [];
 
