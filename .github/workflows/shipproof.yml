@@ -1,0 +1,34 @@
+name: ShipProof
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with:
+          github-token: ${{ github.token }}
+          report-path: shipproof-report.md
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shipproof-report
+          path: shipproof-report.md
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shipproof-screenshots
+          path: shipproof-screenshots
+          if-no-files-found: ignore

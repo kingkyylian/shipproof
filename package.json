@@ -1,0 +1,18 @@
+{
+  "name": "shipproof",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proof reports for AI-generated code before merge.",
+  "type": "module",
+  "bin": {
+    "shipproof": "./bin/shipproof.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
+    "shipproof": "node ./bin/shipproof.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

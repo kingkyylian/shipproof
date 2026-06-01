@@ -1,0 +1,46 @@
+name: ShipProof
+description: Run proof checks for AI-generated pull request changes.
+
+inputs:
+  github-token:
+    description: GitHub token used to read PR files and create or update the ShipProof comment.
+    required: true
+  comment:
+    description: Whether to create or update a pull request comment.
+    required: false
+    default: "true"
+  report-path:
+    description: Path where the markdown report should be written for artifact upload.
+    required: false
+    default: shipproof-report.md
+  browser-smoke:
+    description: Whether to run browser smoke checks when ShipProof detects a supported frontend.
+    required: false
+    default: "true"
+  browser-base-url:
+    description: Existing dev server URL to reuse. If omitted, ShipProof starts the detected dev server.
+    required: false
+    default: ""
+  screenshot-dir:
+    description: Directory for browser smoke screenshots.
+    required: false
+    default: shipproof-screenshots
+  github-api-url:
+    description: GitHub API base URL. Override for GitHub Enterprise or local integration verification.
+    required: false
+    default: https://api.github.com
+
+runs:
+  using: composite
+  steps:
+    - name: Run ShipProof
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/bin/shipproof.js" github
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_REPORT_PATH: ${{ inputs.report-path }}
+        INPUT_BROWSER_SMOKE: ${{ inputs.browser-smoke }}
+        INPUT_BROWSER_BASE_URL: ${{ inputs.browser-base-url }}
+        INPUT_SCREENSHOT_DIR: ${{ inputs.screenshot-dir }}
+        INPUT_GITHUB_API_URL: ${{ inputs.github-api-url }}
