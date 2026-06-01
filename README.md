@@ -82,7 +82,7 @@ jobs:
 
 The action reads changed files from the pull request, writes Markdown and JSON reports, appends the Markdown report to the GitHub step summary, and creates or updates one PR comment marked with `<!-- shipproof-report -->`.
 
-`v0.1.0` is the planned first public release tag. Until that tag exists, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
+`v0.1.0` is the first public GitHub Action release tag. For unreleased local development, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
 
 If GitHub does not grant comment permissions, ShipProof still writes report artifacts and the step summary. In that case the run reports `commentAction: skipped-permission` instead of failing the proof only because a PR comment could not be written.
 

@@ -6,6 +6,10 @@ The format follows Keep a Changelog style categories, and this project uses sema
 
 ## Unreleased
 
+No changes yet.
+
+## 0.1.0 - 2026-06-01
+
 ### Added
 
 - Initial ShipProof CLI for local proof reports.
@@ -18,7 +22,3 @@ The format follows Keep a Changelog style categories, and this project uses sema
 - GitHub Action JSON report artifact input.
 - Graceful fallback when PR comment permissions are unavailable.
 - Mock GitHub API smoke test and live GitHub API verification notes.
-
-## 0.1.0
-
-Pending first public release.
