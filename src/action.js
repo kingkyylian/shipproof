@@ -1,4 +1,5 @@
 import { createBrowserSmokePlan, runBrowserSmoke } from "./browser.js";
+import { resolveShipProofConfig } from "./config.js";
 import { runProof } from "./core.js";
 import { getPullRequestContext, listPullRequestFiles, upsertShipProofComment } from "./github.js";
 import { scanSecurityFindingsFromDisk } from "./security.js";
@@ -12,19 +13,23 @@ export async function runGitHubProof({
   request,
   securityScan,
   browserSmoke = runBrowserSmoke,
+  config,
   writeReport,
+  writeJsonReport,
   appendSummary
 }) {
+  const resolvedConfig = resolveShipProofConfig(config);
   const context = getPullRequestContext(event, env);
   const resolvedChangedFiles = Array.isArray(changedFiles)
     ? changedFiles
     : context && request
     ? await listPullRequestFiles({ context, request })
     : [];
-  const browserPlan = createActionBrowserPlan({ packageJson, changedFiles: resolvedChangedFiles, env });
+  const browserPlan = createActionBrowserPlan({ packageJson, changedFiles: resolvedChangedFiles, env, config: resolvedConfig });
   const report = await runProof({
     packageJson,
     changedFiles: resolvedChangedFiles,
+    config: resolvedConfig,
     executeCommand,
     securityScan: () =>
       securityScan
@@ -32,9 +37,14 @@ export async function runGitHubProof({
         : scanSecurityFindingsFromDisk({ changedFiles: resolvedChangedFiles }),
     browserSmoke: browserPlan ? () => browserSmoke({ plan: browserPlan }) : null
   });
-  const reportPath = env.INPUT_REPORT_PATH || env.SHIPPROOF_REPORT_PATH || "shipproof-report.md";
+  const reportPath = env.INPUT_REPORT_PATH || env.SHIPPROOF_REPORT_PATH || resolvedConfig.reports.markdown;
+  const jsonReportPath = env.INPUT_JSON_REPORT_PATH || env.SHIPPROOF_JSON_REPORT_PATH || resolvedConfig.reports.json;
 
   await writeReport(reportPath, report.markdown);
+
+  if (writeJsonReport) {
+    await writeJsonReport(jsonReportPath, report);
+  }
 
   if (appendSummary) {
     await appendSummary(report.markdown);
@@ -54,20 +64,34 @@ export async function runGitHubProof({
   return {
     report,
     reportPath,
+    jsonReportPath,
     changedFiles: resolvedChangedFiles,
     commentAction
   };
 }
 
-function createActionBrowserPlan({ packageJson, changedFiles, env }) {
-  if (env.INPUT_BROWSER_SMOKE === "false") {
+function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {
+  const browserConfig = config?.browser ?? {};
+
+  if (env.INPUT_BROWSER_SMOKE === "false" || browserConfig.enabled === false) {
     return null;
+  }
+
+  const planConfig = {
+    ...browserConfig,
+    baseUrl: env.INPUT_BROWSER_BASE_URL || browserConfig.baseUrl || undefined,
+    screenshotDir: env.INPUT_SCREENSHOT_DIR || browserConfig.screenshotDir || "shipproof-screenshots"
+  };
+
+  if (planConfig.required === true) {
+    delete planConfig.required;
   }
 
   return createBrowserSmokePlan({
     packageJson,
     changedFiles,
-    baseUrl: env.INPUT_BROWSER_BASE_URL || undefined,
-    screenshotDir: env.INPUT_SCREENSHOT_DIR || "shipproof-screenshots"
+    baseUrl: planConfig.baseUrl,
+    screenshotDir: planConfig.screenshotDir,
+    config: planConfig
   });
 }

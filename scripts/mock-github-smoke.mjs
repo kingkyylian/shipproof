@@ -8,6 +8,7 @@ const projectRoot = path.resolve(import.meta.dirname, "..");
 const tempDir = await mkdtemp(path.join(tmpdir(), "shipproof-gh-smoke-"));
 const eventPath = path.join(tempDir, "event.json");
 const reportPath = path.join(tempDir, "report.md");
+const jsonReportPath = path.join(tempDir, "report.json");
 const summaryPath = path.join(tempDir, "summary.md");
 const calls = [];
 const comments = [];
@@ -59,6 +60,7 @@ try {
       INPUT_GITHUB_TOKEN: "ghs_mock",
       INPUT_GITHUB_API_URL: `http://127.0.0.1:${port}`,
       INPUT_REPORT_PATH: reportPath,
+      INPUT_JSON_REPORT_PATH: jsonReportPath,
       GITHUB_STEP_SUMMARY: summaryPath,
       INPUT_BROWSER_SMOKE: "false"
     }
@@ -71,6 +73,7 @@ try {
   assert(calls.some((call) => call.method === "GET" && call.path.includes("/pulls/42/files")), "expected PR files request");
   assert(calls.some((call) => call.method === "POST" && call.path === "/repos/acme/demo/issues/42/comments"), "expected comment create request");
   assert((await readFile(reportPath, "utf8")).includes("**Decision:** review"), "expected markdown report artifact");
+  assert(JSON.parse(await readFile(jsonReportPath, "utf8")).schemaVersion === "1.0", "expected JSON report artifact");
   assert((await readFile(summaryPath, "utf8")).includes("# ShipProof Report"), "expected step summary output");
 
   console.log("mock GitHub smoke passed");

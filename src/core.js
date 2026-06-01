@@ -1,4 +1,5 @@
 import { buildSecurityCheck, calculateShipScore } from "./security.js";
+import { resolveShipProofConfig } from "./config.js";
 
 const COMMAND_ORDER = [
   { script: "lint", command: "npm run lint", required: false },
@@ -54,16 +55,18 @@ const RISK_RULES = [
   }
 ];
 
-export function discoverProjectCommands(packageJson) {
+export function discoverProjectCommands(packageJson, config) {
   const scripts = packageJson?.scripts ?? {};
+  const resolvedConfig = resolveShipProofConfig(config);
 
   return COMMAND_ORDER
     .filter(({ script }) => typeof scripts[script] === "string")
     .map(({ script, command, required }) => ({
       name: script,
       command,
-      required
-    }));
+      required: isRequiredCheck(resolvedConfig.checks[script], required)
+    }))
+    .filter(Boolean);
 }
 
 export function classifyChangedFiles(files) {
@@ -82,18 +85,27 @@ export function createProofReport({
   checkResults,
   requiredCheckNames = [],
   securityFindings = [],
+  config,
   generatedAt = new Date().toISOString()
 }) {
-  const plannedChecks = discoverProjectCommands(packageJson);
+  const resolvedConfig = resolveShipProofConfig(config);
+  const plannedChecks = discoverProjectCommands(packageJson, resolvedConfig);
   const requiredByName = new Map(plannedChecks.map((check) => [check.name, check.required]));
   for (const checkName of requiredCheckNames) {
     requiredByName.set(checkName, true);
   }
   const risks = classifyChangedFiles(changedFiles);
   const status = deriveStatus(checkResults, requiredByName);
-  const { decision, score } = calculateShipScore({ status, checks: checkResults, risks, securityFindings });
+  const { decision, score } = calculateShipScore({
+    status,
+    checks: checkResults,
+    risks,
+    securityFindings,
+    thresholds: resolvedConfig.score
+  });
   const suggestedNextTests = suggestNextTests(risks);
   const payload = {
+    schemaVersion: "1.0",
     status,
     decision,
     score,
@@ -110,8 +122,9 @@ export function createProofReport({
   };
 }
 
-export async function runProof({ packageJson, changedFiles, generatedAt, executeCommand, securityScan, browserSmoke }) {
-  const checks = discoverProjectCommands(packageJson);
+export async function runProof({ packageJson, changedFiles, generatedAt, config, executeCommand, securityScan, browserSmoke }) {
+  const resolvedConfig = resolveShipProofConfig(config);
+  const checks = discoverProjectCommands(packageJson, resolvedConfig);
   const checkResults = [];
   let securityFindings = [];
   const requiredCheckNames = [];
@@ -144,7 +157,7 @@ export async function runProof({ packageJson, changedFiles, generatedAt, execute
     }
   }
 
-  if (securityScan) {
+  if (resolvedConfig.security.enabled !== false && securityScan) {
     securityFindings = await securityScan();
     const securityCheck = buildSecurityCheck(securityFindings);
     checkResults.push(securityCheck);
@@ -173,8 +186,21 @@ export async function runProof({ packageJson, changedFiles, generatedAt, execute
     checkResults,
     requiredCheckNames,
     securityFindings,
+    config: resolvedConfig,
     generatedAt
   });
+}
+
+function isRequiredCheck(value, fallback) {
+  if (value === "required" || value === true) {
+    return true;
+  }
+
+  if (value === "optional" || value === false) {
+    return false;
+  }
+
+  return fallback;
 }
 
 export function renderProofReport({ status, decision, score, generatedAt, checks, risks, securityFindings = [], suggestedNextTests }) {

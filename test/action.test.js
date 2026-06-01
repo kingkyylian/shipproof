@@ -6,6 +6,7 @@ import { runGitHubProof } from "../src/action.js";
 describe("runGitHubProof", () => {
   it("reads PR files, writes artifact markdown, appends step summary, and comments by default", async () => {
     const writes = [];
+    const jsonWrites = [];
     const summaries = [];
     const requests = [];
 
@@ -14,7 +15,8 @@ describe("runGitHubProof", () => {
       event: { pull_request: { number: 42, head: { sha: "abc123" } } },
       env: {
         GITHUB_REPOSITORY: "acme/demo",
-        INPUT_REPORT_PATH: "artifacts/proof.md"
+        INPUT_REPORT_PATH: "artifacts/proof.md",
+        INPUT_JSON_REPORT_PATH: "artifacts/proof.json"
       },
       executeCommand: async () => ({ exitCode: 0, durationMs: 25, stdout: "ok" }),
       request: async (path, options = {}) => {
@@ -35,14 +37,23 @@ describe("runGitHubProof", () => {
         return { id: 9 };
       },
       writeReport: async (file, markdown) => writes.push({ file, markdown }),
+      writeJsonReport: async (file, payload) => jsonWrites.push({ file, payload }),
       appendSummary: async (markdown) => summaries.push(markdown)
     });
 
     assert.equal(result.reportPath, "artifacts/proof.md");
+    assert.equal(result.jsonReportPath, "artifacts/proof.json");
     assert.equal(result.commentAction, "created");
     assert.deepEqual(result.changedFiles, ["middleware.ts"]);
     assert.equal(writes.length, 1);
     assert.match(writes[0].markdown, /# ShipProof Report/);
+    assert.deepEqual(jsonWrites, [
+      {
+        file: "artifacts/proof.json",
+        payload: result.report
+      }
+    ]);
+    assert.equal(jsonWrites[0].payload.schemaVersion, "1.0");
     assert.deepEqual(summaries, [writes[0].markdown]);
     assert.equal(requests.at(-1).path, "/repos/acme/demo/issues/42/comments");
   });

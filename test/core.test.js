@@ -258,6 +258,29 @@ describe("createProofReport", () => {
     assert.equal(report.score, 29);
     assert.match(report.markdown, /## Security Findings/);
   });
+
+  it("includes a schema version and applies configured score thresholds", () => {
+    const report = createProofReport({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["middleware.ts"],
+      checkResults: [{ name: "test", command: "npm test", status: "passed", durationMs: 100 }],
+      config: {
+        score: {
+          ship: 90,
+          review: 60
+        }
+      },
+      generatedAt: "2026-06-01T17:30:00.000Z"
+    });
+
+    assert.equal(report.schemaVersion, "1.0");
+    assert.equal(report.score, 85);
+    assert.equal(report.decision, "review");
+  });
 });
 
 describe("runProof", () => {
@@ -340,5 +363,32 @@ describe("runProof", () => {
     assert.equal(browserRan, false);
     assert.deepEqual(report.checks.map((check) => check.name), ["test", "security-lite"]);
     assert.equal(report.status, "failed");
+  });
+
+  it("skips security-lite when config disables security checks", async () => {
+    let securityRan = false;
+    const report = await runProof({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["src/api/route.ts"],
+      generatedAt: "2026-06-01T17:40:00.000Z",
+      config: {
+        security: {
+          enabled: false
+        }
+      },
+      executeCommand: async () => ({ exitCode: 0, durationMs: 50, stdout: "ok" }),
+      securityScan: async () => {
+        securityRan = true;
+        return [];
+      }
+    });
+
+    assert.equal(securityRan, false);
+    assert.deepEqual(report.checks.map((check) => check.name), ["test"]);
+    assert.equal(report.status, "passed");
   });
 });

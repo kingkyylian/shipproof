@@ -18,12 +18,20 @@ jobs:
         with:
           github-token: ${{ github.token }}
           report-path: shipproof-report.md
+          json-report-path: shipproof-report.json
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: shipproof-report
           path: shipproof-report.md
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shipproof-report-json
+          path: shipproof-report.json
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4

@@ -81,6 +81,30 @@ describe("createBrowserSmokePlan", () => {
     });
   });
 
+  it("merges configured routes and required mode into the plan", () => {
+    const plan = createBrowserSmokePlan({
+      packageJson: {
+        scripts: { dev: "next dev" },
+        dependencies: { next: "15.0.0" }
+      },
+      changedFiles: ["src/app/login/page.tsx"],
+      config: {
+        required: false,
+        routes: ["/settings"],
+        screenshotDir: "artifacts/screens"
+      }
+    });
+
+    assert.deepEqual(plan, {
+      framework: "next",
+      devCommand: "npm run dev -- --hostname 127.0.0.1 --port 4173",
+      baseUrl: "http://127.0.0.1:4173",
+      routes: ["/login", "/settings"],
+      screenshotDir: "artifacts/screens",
+      required: false
+    });
+  });
+
   it("returns null when no frontend framework can be detected", () => {
     assert.equal(createBrowserSmokePlan({ packageJson: { scripts: { test: "node --test" } }, changedFiles: [] }), null);
   });

@@ -101,7 +101,7 @@ export function buildSecurityCheck(findings) {
   };
 }
 
-export function calculateShipScore({ status, checks, risks, securityFindings }) {
+export function calculateShipScore({ status, checks, risks, securityFindings, thresholds = { ship: 80, review: 60 } }) {
   const failedRequiredChecks = checks.filter((check) => check.required === true && check.status === "failed").length;
   const uncheckedRequiredChecks = checks.filter((check) => check.required === true && check.status === "not_checked").length;
   const highRisks = risks.filter((risk) => risk.severity === "high").length;
@@ -121,7 +121,7 @@ export function calculateShipScore({ status, checks, risks, securityFindings }) 
 
   return {
     score,
-    decision: decide({ score, status, highSecurity })
+    decision: decide({ score, status, highSecurity, thresholds })
   };
 }
 
@@ -168,12 +168,12 @@ function isAuthSensitivePath(file) {
   return file === "middleware.ts" || file === "middleware.js" || /(^|\/)(auth|login|session|permission|role)(\/|\.|-)/i.test(file);
 }
 
-function decide({ score, status, highSecurity }) {
-  if (status === "failed" || highSecurity > 0 || score < 60) {
+function decide({ score, status, highSecurity, thresholds }) {
+  if (status === "failed" || highSecurity > 0 || score < thresholds.review) {
     return "no-ship";
   }
 
-  if (status === "not_checked" || score < 80) {
+  if (status === "not_checked" || score < thresholds.ship) {
     return "review";
   }
 

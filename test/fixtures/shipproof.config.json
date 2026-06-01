@@ -1,0 +1,11 @@
+{
+  "browser": {
+    "enabled": false
+  },
+  "security": {
+    "enabled": false
+  },
+  "score": {
+    "ship": 95
+  }
+}

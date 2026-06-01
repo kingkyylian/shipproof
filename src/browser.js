@@ -54,27 +54,41 @@ export function createBrowserSmokePlan({
   changedFiles,
   baseUrl,
   port = DEFAULT_PORT,
-  screenshotDir = DEFAULT_SCREENSHOT_DIR
+  screenshotDir = DEFAULT_SCREENSHOT_DIR,
+  config = {}
 }) {
+  if (config.enabled === false) {
+    return null;
+  }
+
   const framework = detectFrontendFramework(packageJson, { port });
 
   if (!framework) {
     return null;
   }
 
-  const routes = inferSmokeRoutes({ framework: framework.name, changedFiles });
+  const routes = unique([
+    ...inferSmokeRoutes({ framework: framework.name, changedFiles }),
+    ...(Array.isArray(config.routes) ? config.routes : [])
+  ]);
 
   if (routes.length === 0) {
     return null;
   }
 
-  return {
+  const plan = {
     framework: framework.name,
     devCommand: baseUrl ? null : framework.devCommand,
-    baseUrl: baseUrl ?? `http://127.0.0.1:${framework.port}`,
+    baseUrl: baseUrl ?? config.baseUrl ?? `http://127.0.0.1:${framework.port}`,
     routes,
-    screenshotDir
+    screenshotDir: config.screenshotDir ?? screenshotDir
   };
+
+  if (config.required !== undefined) {
+    plan.required = config.required;
+  }
+
+  return plan;
 }
 
 export async function runBrowserSmoke({ plan, startServer = startDevServer, checkRoutes = checkRoutesWithPlaywright }) {
@@ -95,7 +109,7 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
       status: failures.length > 0 ? "failed" : "passed",
       durationMs: Math.round(performance.now() - startedAt),
       summary: summarizeBrowserResults(routeResults, plan.screenshotDir),
-      required: true
+      required: plan.required ?? true
     };
   } catch (error) {
     return {
@@ -104,7 +118,7 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
       status: "failed",
       durationMs: Math.round(performance.now() - startedAt),
       summary: error.message,
-      required: true
+      required: plan.required ?? true
     };
   } finally {
     if (server) {

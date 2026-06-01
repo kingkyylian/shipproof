@@ -7,6 +7,7 @@ import path from "node:path";
 
 import { runGitHubProof } from "../src/action.js";
 import { createBrowserSmokePlan, runBrowserSmoke } from "../src/browser.js";
+import { loadShipProofConfig } from "../src/config.js";
 import { runProof } from "../src/core.js";
 import { createGitHubRequest } from "../src/github.js";
 import { scanSecurityFindingsFromDisk } from "../src/security.js";
@@ -24,8 +25,10 @@ if (args.includes("--help") || args.includes("-h")) {
     "",
     "Browser options:",
     "  --no-browser              Disable browser smoke checks.",
+    "  --config <path>           Read ShipProof configuration from a JSON file.",
     "  --browser-base-url <url>  Reuse an existing dev server instead of starting one.",
-    "  --screenshot-dir <path>   Screenshot output directory. Default: shipproof-screenshots."
+    "  --screenshot-dir <path>   Screenshot output directory. Default: shipproof-screenshots.",
+    "  --json-report-path <path> Write the full JSON report payload to a file."
   ].join("\n"));
   process.exit(0);
 }
@@ -54,20 +57,30 @@ try {
 
 async function runLocalMode(values) {
   const packageJson = await readPackageJson(cwd);
+  const config = await readConfig(values);
   const changedFiles = parseChangedFiles(values) ?? readChangedFilesFromGit(cwd);
-  const browserPlan = createCliBrowserPlan({ packageJson, changedFiles, values });
+  const browserPlan = createCliBrowserPlan({ packageJson, changedFiles, values, config });
 
-  return runProof({
+  const report = await runProof({
     packageJson,
     changedFiles,
+    config,
     executeCommand: (command) => executeCommand(command, cwd),
     securityScan: () => scanSecurityFindingsFromDisk({ changedFiles, cwd }),
     browserSmoke: browserPlan ? () => runBrowserSmoke({ plan: browserPlan }) : null
   });
+  const jsonReportPath = readOption(values, "--json-report-path") || process.env.SHIPPROOF_JSON_REPORT_PATH;
+
+  if (jsonReportPath) {
+    await writeJsonReportFile(jsonReportPath, report);
+  }
+
+  return report;
 }
 
 async function runGitHubMode(values) {
   const packageJson = await readPackageJson(cwd);
+  const config = await readConfig(values);
   const event = await readGitHubEvent(process.env);
   const token = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
   const request = createGitHubRequest({
@@ -80,14 +93,25 @@ async function runGitHubMode(values) {
     packageJson,
     event,
     env: process.env,
+    config,
     changedFiles: changedOverride,
     executeCommand: (command) => executeCommand(command, cwd),
     securityScan: ({ changedFiles } = {}) => scanSecurityFindingsFromDisk({ changedFiles: changedFiles ?? changedOverride ?? [], cwd }),
     request,
     writeReport: writeReportFile,
+    writeJsonReport: writeJsonReportFile,
     appendSummary: process.env.GITHUB_STEP_SUMMARY
       ? (markdown) => appendFile(process.env.GITHUB_STEP_SUMMARY, markdown)
       : null
+  });
+}
+
+async function readConfig(values) {
+  const configPath = readOption(values, "--config") || process.env.INPUT_CONFIG_PATH || process.env.SHIPPROOF_CONFIG;
+
+  return loadShipProofConfig({
+    filePath: configPath ? path.resolve(cwd, configPath) : null,
+    readFile
   });
 }
 
@@ -116,16 +140,19 @@ function parseChangedFiles(values) {
   return changed.length > 0 ? changed : null;
 }
 
-function createCliBrowserPlan({ packageJson, changedFiles, values }) {
-  if (values.includes("--no-browser") || process.env.SHIPPROOF_BROWSER_SMOKE === "false") {
+function createCliBrowserPlan({ packageJson, changedFiles, values, config }) {
+  const browserConfig = config.browser;
+
+  if (values.includes("--no-browser") || process.env.SHIPPROOF_BROWSER_SMOKE === "false" || browserConfig.enabled === false) {
     return null;
   }
 
   return createBrowserSmokePlan({
     packageJson,
     changedFiles,
-    baseUrl: readOption(values, "--browser-base-url") || process.env.SHIPPROOF_BROWSER_BASE_URL || undefined,
-    screenshotDir: readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || "shipproof-screenshots"
+    baseUrl: readOption(values, "--browser-base-url") || process.env.SHIPPROOF_BROWSER_BASE_URL || browserConfig.baseUrl || undefined,
+    screenshotDir: readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || browserConfig.screenshotDir,
+    config: browserConfig
   });
 }
 
@@ -172,6 +199,13 @@ async function writeReportFile(file, markdown) {
 
   await mkdir(directory, { recursive: true });
   await writeFile(path.resolve(cwd, file), markdown);
+}
+
+async function writeJsonReportFile(file, payload) {
+  const directory = path.dirname(path.resolve(cwd, file));
+
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.resolve(cwd, file), `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function executeCommand(command, directory) {

@@ -13,6 +13,14 @@ inputs:
     description: Path where the markdown report should be written for artifact upload.
     required: false
     default: shipproof-report.md
+  config-path:
+    description: Optional path to a ShipProof JSON config file.
+    required: false
+    default: ""
+  json-report-path:
+    description: Path where the JSON report payload should be written for artifact upload.
+    required: false
+    default: shipproof-report.json
   browser-smoke:
     description: Whether to run browser smoke checks when ShipProof detects a supported frontend.
     required: false
@@ -40,6 +48,8 @@ runs:
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_COMMENT: ${{ inputs.comment }}
         INPUT_REPORT_PATH: ${{ inputs.report-path }}
+        INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        INPUT_JSON_REPORT_PATH: ${{ inputs.json-report-path }}
         INPUT_BROWSER_SMOKE: ${{ inputs.browser-smoke }}
         INPUT_BROWSER_BASE_URL: ${{ inputs.browser-base-url }}
         INPUT_SCREENSHOT_DIR: ${{ inputs.screenshot-dir }}

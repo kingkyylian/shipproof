@@ -12,6 +12,7 @@ ShipProof is a verification layer for AI-generated code. It does not write code 
 - Detects supported frontend projects and runs browser smoke checks for changed UI routes.
 - Produces a `ship`, `review`, or `no-ship` decision with a 0-100 score.
 - Prints a Markdown report suitable for a GitHub PR comment.
+- Writes a JSON report payload with `schemaVersion: "1.0"` in GitHub mode.
 
 ## Usage
 
@@ -20,6 +21,7 @@ npm test
 npm run smoke:github-mock
 npm run shipproof -- --changed src/core.js,test/core.test.js
 npm run shipproof -- --changed src/app/login/page.tsx --browser-base-url http://127.0.0.1:3000
+npm run shipproof -- --changed src/core.js --config shipproof.config.json --json-report-path /tmp/shipproof-report.json
 ```
 
 If `--changed` is omitted, ShipProof reads changed files from:
@@ -53,6 +55,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           report-path: shipproof-report.md
+          json-report-path: shipproof-report.json
           screenshot-dir: shipproof-screenshots
 
       - uses: actions/upload-artifact@v4
@@ -65,18 +68,27 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: shipproof-report-json
+          path: shipproof-report.json
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
           name: shipproof-screenshots
           path: shipproof-screenshots
           if-no-files-found: ignore
 ```
 
-The action reads changed files from the pull request, writes a Markdown report, appends it to the GitHub step summary, and creates or updates one PR comment marked with `<!-- shipproof-report -->`.
+The action reads changed files from the pull request, writes Markdown and JSON reports, appends the Markdown report to the GitHub step summary, and creates or updates one PR comment marked with `<!-- shipproof-report -->`.
 
 `v0.1.0` is the planned first public release tag. Until that tag exists, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
 
 Browser smoke checks run automatically for detected Next.js and Vite projects when frontend files change. ShipProof can reuse an existing dev server with `browser-base-url`, otherwise it starts the detected `dev` script. The target project must have `playwright` or `@playwright/test` installed for real browser checks.
 
 Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision.
+
+Configuration is optional. Add `shipproof.config.json` when a repository needs explicit browser routes, advisory browser smoke, disabled security-lite, custom score thresholds, or custom report paths. See `docs/configuration.md` and `docs/report-schema.md`.
 
 `npm run smoke:github-mock` starts a local mock GitHub API and verifies the real `shipproof github` CLI path for PR file lookup, report artifact writing, step summary writing, and PR comment creation. Use the `github-api-url` input for GitHub Enterprise or local integration verification.
 
