@@ -84,6 +84,8 @@ The action reads changed files from the pull request, writes Markdown and JSON r
 
 `v0.1.0` is the planned first public release tag. Until that tag exists, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
 
+If GitHub does not grant comment permissions, ShipProof still writes report artifacts and the step summary. In that case the run reports `commentAction: skipped-permission` instead of failing the proof only because a PR comment could not be written.
+
 Browser smoke checks run automatically for detected Next.js and Vite projects when frontend files change. ShipProof can reuse an existing dev server with `browser-base-url`, otherwise it starts the detected `dev` script. The target project must have `playwright` or `@playwright/test` installed for real browser checks.
 
 Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision.
