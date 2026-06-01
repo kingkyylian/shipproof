@@ -56,3 +56,32 @@ npm run smoke:github-mock
 ```
 
 This starts a local mock GitHub API and verifies PR file lookup, artifact writing, step summary writing, and PR comment creation through the real `shipproof github` CLI path.
+
+## ShipProof Self-Dogfood
+
+Repository:
+
+```txt
+https://github.com/kingkyylian/shipproof
+```
+
+Dogfood pull request:
+
+```txt
+https://github.com/kingkyylian/shipproof/pull/1
+```
+
+Verified evidence:
+
+- Workflow: `ShipProof`
+- Job: `proof`
+- Event: `pull_request`
+- Run: `https://github.com/kingkyylian/shipproof/actions/runs/26769665715`
+- Conclusion: `success`
+- Report artifact: `shipproof-report`
+- JSON artifact: `shipproof-report-json`
+- PR comment marker: `<!-- shipproof-report -->`
+- Decision: `ship`
+- Score: `100/100`
+
+The workflow originally proved artifact upload while comment creation was skipped by GitHub token permissions. Updating the workflow permission from `pull-requests: read` to `pull-requests: write` allowed ShipProof to create the PR comment.
