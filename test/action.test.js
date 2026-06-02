@@ -60,6 +60,10 @@ describe("runGitHubProof", () => {
     assert.deepEqual(result.changedFiles, ["middleware.ts"]);
     assert.equal(writes.length, 1);
     assert.match(writes[0].markdown, /# ShipProof Report/);
+    assert.match(writes[0].markdown, /## Artifacts/);
+    assert.match(writes[0].markdown, /Markdown report: `artifacts\/proof\.md`/);
+    assert.match(writes[0].markdown, /JSON report: `artifacts\/proof\.json`/);
+    assert.match(writes[0].markdown, /Security SARIF: `artifacts\/security\.sarif`/);
     assert.deepEqual(jsonWrites, [
       {
         file: "artifacts/proof.json",
@@ -67,6 +71,13 @@ describe("runGitHubProof", () => {
       }
     ]);
     assert.equal(jsonWrites[0].payload.schemaVersion, "1.0");
+    assert.deepEqual(jsonWrites[0].payload.artifacts, {
+      markdown: "artifacts/proof.md",
+      json: "artifacts/proof.json",
+      sarif: "artifacts/security.sarif",
+      screenshots: "shipproof-screenshots",
+      browserLogs: "shipproof-browser-logs"
+    });
     assert.equal(sarifWrites[0].file, "artifacts/security.sarif");
     assert.equal(sarifWrites[0].payload.version, "2.1.0");
     assert.equal(sarifWrites[0].payload.runs[0].results[0].ruleId, "auth-sensitive-change");

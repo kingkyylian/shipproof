@@ -1,6 +1,6 @@
 import { createBrowserSmokePlan, runBrowserSmoke } from "./browser.js";
 import { resolveShipProofConfig } from "./config.js";
-import { runProof } from "./core.js";
+import { attachReportArtifacts, runProof } from "./core.js";
 import { getPullRequestContext, listPullRequestFiles, upsertShipProofComment } from "./github.js";
 import { createSecuritySarif, scanSecurityFindingsFromDisk } from "./security.js";
 
@@ -29,7 +29,7 @@ export async function runGitHubProof({
     : [];
   const workspaceContext = loadWorkspace ? await loadWorkspace({ changedFiles: resolvedChangedFiles }) : null;
   const browserPlan = createActionBrowserPlan({ packageJson, changedFiles: resolvedChangedFiles, env, config: resolvedConfig, workspaceContext });
-  const report = await runProof({
+  let report = await runProof({
     packageJson,
     changedFiles: resolvedChangedFiles,
     config: resolvedConfig,
@@ -44,6 +44,16 @@ export async function runGitHubProof({
   const reportPath = env.INPUT_REPORT_PATH || env.SHIPPROOF_REPORT_PATH || resolvedConfig.reports.markdown;
   const jsonReportPath = env.INPUT_JSON_REPORT_PATH || env.SHIPPROOF_JSON_REPORT_PATH || resolvedConfig.reports.json;
   const securitySarifPath = env.INPUT_SECURITY_SARIF_PATH || env.SHIPPROOF_SECURITY_SARIF_PATH || resolvedConfig.reports.sarif;
+  const screenshotDir = env.INPUT_SCREENSHOT_DIR || resolvedConfig.browser.screenshotDir || "shipproof-screenshots";
+  const browserLogDir = env.INPUT_BROWSER_LOG_DIR || resolvedConfig.browser.logDir || "shipproof-browser-logs";
+
+  report = attachReportArtifacts(report, {
+    markdown: reportPath,
+    json: jsonReportPath,
+    sarif: securitySarifPath,
+    screenshots: screenshotDir,
+    browserLogs: browserLogDir
+  });
 
   await writeReport(reportPath, report.markdown);
 

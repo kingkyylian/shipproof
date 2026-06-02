@@ -210,6 +210,49 @@ describe("renderProofReport", () => {
     assert.match(markdown, /Wildcard CORS header allows any origin/);
     assert.match(markdown, /Wildcard CORS allows any origin/);
   });
+
+  it("renders failed check details, rerun commands, and artifact references when present", () => {
+    const markdown = renderProofReport({
+      status: "failed",
+      generatedAt: "2026-06-02T18:00:00.000Z",
+      decision: "no-ship",
+      score: 35,
+      checks: [
+        {
+          name: "test",
+          command: "npm test",
+          status: "failed",
+          durationMs: 900,
+          summary: "1 failing test",
+          failureExcerpt: "FAIL test/auth.test.js\nexpected 200, got 401"
+        }
+      ],
+      risks: [],
+      suggestedNextTests: [],
+      rerunCommands: ["npm test", "npm run shipproof -- --changed src/auth.js,test/auth.test.js"],
+      artifacts: {
+        markdown: "shipproof-report.md",
+        json: "shipproof-report.json",
+        sarif: "shipproof-security.sarif",
+        screenshots: "shipproof-screenshots",
+        browserLogs: "shipproof-browser-logs"
+      }
+    });
+
+    assert.match(markdown, /## Check Details/);
+    assert.match(markdown, /### test/);
+    assert.match(markdown, /FAIL test\/auth\.test\.js/);
+    assert.match(markdown, /expected 200, got 401/);
+    assert.match(markdown, /## Rerun Commands/);
+    assert.match(markdown, /`npm test`/);
+    assert.match(markdown, /`npm run shipproof -- --changed src\/auth\.js,test\/auth\.test\.js`/);
+    assert.match(markdown, /## Artifacts/);
+    assert.match(markdown, /Markdown report: `shipproof-report\.md`/);
+    assert.match(markdown, /JSON report: `shipproof-report\.json`/);
+    assert.match(markdown, /Security SARIF: `shipproof-security\.sarif`/);
+    assert.match(markdown, /Screenshots: `shipproof-screenshots`/);
+    assert.match(markdown, /Browser logs: `shipproof-browser-logs`/);
+  });
 });
 
 describe("createProofReport", () => {
@@ -358,6 +401,25 @@ describe("createProofReport", () => {
     assert.equal(report.score, 85);
     assert.equal(report.decision, "review");
   });
+
+  it("derives rerun commands from non-passing checks and changed files", () => {
+    const report = createProofReport({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["src/auth.js", "test/auth.test.js"],
+      checkResults: [{ name: "test", command: "npm test", status: "failed", durationMs: 100, summary: "auth failed" }],
+      generatedAt: "2026-06-02T18:10:00.000Z"
+    });
+
+    assert.deepEqual(report.rerunCommands, [
+      "npm test",
+      "npm run shipproof -- --changed src/auth.js,test/auth.test.js"
+    ]);
+    assert.match(report.markdown, /## Rerun Commands/);
+  });
 });
 
 describe("runProof", () => {
@@ -387,7 +449,14 @@ describe("runProof", () => {
     assert.deepEqual(executed, ["npm run lint", "npm test"]);
     assert.deepEqual(report.checks, [
       { name: "lint", command: "npm run lint", status: "passed", durationMs: 50, summary: "ok" },
-      { name: "test", command: "npm test", status: "failed", durationMs: 90, summary: "login flow failed" },
+      {
+        name: "test",
+        command: "npm test",
+        status: "failed",
+        durationMs: 90,
+        summary: "login flow failed",
+        failureExcerpt: "login flow failed\nstack omitted"
+      },
       { name: "build", command: "npm run build", status: "not_checked", summary: "Skipped after test failure" }
     ]);
     assert.equal(report.status, "failed");
@@ -577,5 +646,53 @@ describe("runProof", () => {
     assert.equal(report.status, "failed");
     assert.equal(report.decision, "no-ship");
     assert.equal(report.score, 70);
+  });
+
+  it("keeps a short failure excerpt from failed command output", async () => {
+    const report = await runProof({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["test/auth.test.js"],
+      generatedAt: "2026-06-02T18:20:00.000Z",
+      executeCommand: async () => ({
+        exitCode: 1,
+        durationMs: 100,
+        stdout: "TAP version 13\nnot ok 1 auth test\nexpected 200, got 401\n# tests 1\n# fail 1"
+      })
+    });
+
+    assert.equal(
+      report.checks[0].failureExcerpt,
+      "TAP version 13\nnot ok 1 auth test\nexpected 200, got 401\n# tests 1\n# fail 1"
+    );
+    assert.match(report.markdown, /## Check Details/);
+    assert.match(report.markdown, /expected 200, got 401/);
+  });
+
+  it("redacts likely secrets from failed command excerpts", async () => {
+    const report = await runProof({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["test/env.test.js"],
+      generatedAt: "2026-06-02T18:25:00.000Z",
+      executeCommand: async () => ({
+        exitCode: 1,
+        durationMs: 100,
+        stderr: "DATABASE_URL=postgres://user:pass@example.com/db\nSTRIPE_SECRET_KEY=sk_live_123\nexpected env to be mocked"
+      })
+    });
+
+    assert.equal(
+      report.checks[0].failureExcerpt,
+      "DATABASE_URL=[redacted]\nSTRIPE_SECRET_KEY=[redacted]\nexpected env to be mocked"
+    );
+    assert.doesNotMatch(report.markdown, /sk_live_123/);
+    assert.doesNotMatch(report.markdown, /postgres:\/\/user:pass/);
   });
 });

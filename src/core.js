@@ -118,6 +118,7 @@ export function createProofReport({
   checkResults,
   requiredCheckNames = [],
   securityFindings = [],
+  artifacts,
   config,
   generatedAt = new Date().toISOString()
 }) {
@@ -140,6 +141,7 @@ export function createProofReport({
     thresholds: resolvedConfig.score
   });
   const suggestedNextTests = suggestNextTests(risks);
+  const rerunCommands = suggestRerunCommands({ checks: checkResults, changedFiles, status, decision });
   const agentFeedbackPrompt = createAgentFeedbackPrompt({
     decision,
     status,
@@ -160,7 +162,21 @@ export function createProofReport({
     risks,
     securityFindings,
     suggestedNextTests,
+    rerunCommands,
+    artifacts: normalizeArtifacts(artifacts),
     agentFeedbackPrompt
+  };
+
+  return {
+    ...payload,
+    markdown: renderProofReport(payload)
+  };
+}
+
+export function attachReportArtifacts(report, artifacts) {
+  const payload = {
+    ...report,
+    artifacts: normalizeArtifacts(artifacts)
   };
 
   return {
@@ -191,13 +207,23 @@ export async function runProof({ packageJson, changedFiles, generatedAt, config,
     const result = await executeCommand(check.command);
     const status = result.exitCode === 0 ? "passed" : "failed";
 
-    checkResults.push({
+    const checkResult = {
       name: check.name,
       command: check.command,
       status,
       durationMs: result.durationMs,
       summary: summarizeCommandOutput(result)
-    });
+    };
+
+    if (status === "failed") {
+      const failureExcerpt = summarizeCommandExcerpt(result);
+
+      if (failureExcerpt) {
+        checkResult.failureExcerpt = failureExcerpt;
+      }
+    }
+
+    checkResults.push(checkResult);
 
     if (check.required && status === "failed") {
       failedRequiredCheck = check.name;
@@ -259,6 +285,8 @@ export function renderProofReport({
   risks,
   securityFindings = [],
   suggestedNextTests,
+  rerunCommands = [],
+  artifacts,
   agentFeedbackPrompt
 }) {
   const lines = [
@@ -284,6 +312,26 @@ export function renderProofReport({
     lines.push(
       `| ${check.name} | \`${check.command}\` | ${formatStatus(check.status)} | ${formatDuration(check.durationMs)} | ${escapeTableCell(check.summary ?? "")} |`
     );
+  }
+
+  const detailedChecks = checks.filter((check) => check.failureExcerpt);
+
+  if (detailedChecks.length > 0) {
+    lines.push("", "## Check Details", "");
+
+    for (const check of detailedChecks) {
+      lines.push(
+        `### ${check.name}`,
+        "",
+        `- Command: \`${check.command}\``,
+        `- Status: ${formatStatus(check.status)}`,
+        "",
+        "```text",
+        check.failureExcerpt,
+        "```",
+        ""
+      );
+    }
   }
 
   lines.push("", "## Risky Changes", "", "| Risk | Severity | Files |", "| --- | --- | --- |");
@@ -316,6 +364,20 @@ export function renderProofReport({
     for (const test of suggestedNextTests) {
       lines.push(`- ${test}`);
     }
+  }
+
+  if (rerunCommands.length > 0) {
+    lines.push("", "## Rerun Commands", "");
+
+    for (const command of rerunCommands) {
+      lines.push(`- \`${command}\``);
+    }
+  }
+
+  const artifactLines = formatArtifacts(artifacts);
+
+  if (artifactLines.length > 0) {
+    lines.push("", "## Artifacts", "", ...artifactLines);
   }
 
   if (agentFeedbackPrompt) {
@@ -369,7 +431,39 @@ function summarizeCommandOutput({ stdout = "", stderr = "" }) {
     return "";
   }
 
-  return output.split("\n")[0].trim();
+  return redactCommandOutputLine(output.split("\n")[0].trim());
+}
+
+function summarizeCommandExcerpt({ stdout = "", stderr = "" }) {
+  const output = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n").trim();
+
+  if (output.length === 0) {
+    return "";
+  }
+
+  const lines = output
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0)
+    .map(redactCommandOutputLine)
+    .slice(-12);
+  const excerpt = lines.join("\n");
+  const maxLength = 1200;
+
+  if (excerpt.length <= maxLength) {
+    return excerpt;
+  }
+
+  return `${excerpt.slice(0, maxLength).trimEnd()}\n...`;
+}
+
+function redactCommandOutputLine(line) {
+  return line
+    .replace(
+      /\b([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY|API_KEY|DATABASE_URL)[A-Z0-9_]*)\s*=\s*("[^"]*"|'[^']*'|\S+)/gi,
+      "$1=[redacted]"
+    )
+    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{12,}/gi, "$1 [redacted]");
 }
 
 function deriveStatus(checkResults, requiredByName) {
@@ -404,4 +498,46 @@ function suggestNextTests(risks) {
     .map((risk) => suggestionsByCategory[risk.category])
     .filter(Boolean)
     .filter((suggestion, index, suggestions) => suggestions.indexOf(suggestion) === index);
+}
+
+function suggestRerunCommands({ checks, changedFiles, status, decision }) {
+  if (status === "passed" && decision === "ship") {
+    return [];
+  }
+
+  const commands = checks
+    .filter((check) => ["failed", "not_checked"].includes(check.status) && check.command)
+    .map((check) => check.command);
+
+  if (changedFiles.length > 0) {
+    commands.push(`npm run shipproof -- --changed ${changedFiles.join(",")}`);
+  }
+
+  return unique(commands);
+}
+
+function normalizeArtifacts(artifacts) {
+  if (!artifacts) {
+    return undefined;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(artifacts).filter(([, value]) => typeof value === "string" && value.length > 0)
+  );
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function formatArtifacts(artifacts) {
+  const labels = [
+    ["markdown", "Markdown report"],
+    ["json", "JSON report"],
+    ["sarif", "Security SARIF"],
+    ["screenshots", "Screenshots"],
+    ["browserLogs", "Browser logs"]
+  ];
+
+  return labels
+    .filter(([key]) => artifacts?.[key])
+    .map(([key, label]) => `- ${label}: \`${artifacts[key]}\``);
 }
