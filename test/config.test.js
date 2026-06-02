@@ -17,7 +17,11 @@ describe("resolveShipProofConfig", () => {
         required: true,
         baseUrl: null,
         routes: [],
-        screenshotDir: "shipproof-screenshots"
+        screenshotDir: "shipproof-screenshots",
+        logDir: "shipproof-browser-logs",
+        readyUrl: null,
+        timeoutMs: 30000,
+        waitUntil: "networkidle"
       },
       security: {
         enabled: true,
@@ -57,7 +61,11 @@ describe("resolveShipProofConfig", () => {
           required: false,
           baseUrl: null,
           routes: ["/login"],
-          screenshotDir: "shipproof-screenshots"
+          screenshotDir: "shipproof-screenshots",
+          logDir: "shipproof-browser-logs",
+          readyUrl: null,
+          timeoutMs: 30000,
+          waitUntil: "networkidle"
         },
         security: {
           enabled: true,

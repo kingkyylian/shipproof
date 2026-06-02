@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { describe, it } from "node:test";
 
 import {
+  checkRoutesWithPlaywright,
   createBrowserSmokePlan,
   detectFrontendFramework,
   inferSmokeRoutes,
-  runBrowserSmoke
+  runBrowserSmoke,
+  startDevServer
 } from "../src/browser.js";
 
 describe("detectFrontendFramework", () => {
@@ -77,11 +81,15 @@ describe("createBrowserSmokePlan", () => {
       devCommand: "npm run dev -- --hostname 127.0.0.1 --port 4173",
       baseUrl: "http://127.0.0.1:4173",
       routes: ["/login"],
-      screenshotDir: "shipproof-screenshots"
+      screenshotDir: "shipproof-screenshots",
+      logDir: "shipproof-browser-logs",
+      readyUrl: "http://127.0.0.1:4173",
+      timeoutMs: 30000,
+      waitUntil: "networkidle"
     });
   });
 
-  it("merges configured routes and required mode into the plan", () => {
+  it("merges configured routes, required mode, readiness, and logs into the plan", () => {
     const plan = createBrowserSmokePlan({
       packageJson: {
         scripts: { dev: "next dev" },
@@ -91,7 +99,11 @@ describe("createBrowserSmokePlan", () => {
       config: {
         required: false,
         routes: ["/settings"],
-        screenshotDir: "artifacts/screens"
+        screenshotDir: "artifacts/screens",
+        logDir: "artifacts/browser-logs",
+        readyUrl: "http://127.0.0.1:4173/health",
+        timeoutMs: 12000,
+        waitUntil: "domcontentloaded"
       }
     });
 
@@ -101,7 +113,36 @@ describe("createBrowserSmokePlan", () => {
       baseUrl: "http://127.0.0.1:4173",
       routes: ["/login", "/settings"],
       screenshotDir: "artifacts/screens",
+      logDir: "artifacts/browser-logs",
+      readyUrl: "http://127.0.0.1:4173/health",
+      timeoutMs: 12000,
+      waitUntil: "domcontentloaded",
       required: false
+    });
+  });
+
+  it("reuses an existing server when baseUrl is configured", () => {
+    const plan = createBrowserSmokePlan({
+      packageJson: {
+        scripts: { dev: "next dev" },
+        dependencies: { next: "15.0.0" }
+      },
+      changedFiles: ["app/login/page.tsx"],
+      config: {
+        baseUrl: "http://127.0.0.1:3000"
+      }
+    });
+
+    assert.deepEqual(plan, {
+      framework: "next",
+      devCommand: null,
+      baseUrl: "http://127.0.0.1:3000",
+      routes: ["/login"],
+      screenshotDir: "shipproof-screenshots",
+      logDir: "shipproof-browser-logs",
+      readyUrl: "http://127.0.0.1:3000",
+      timeoutMs: 30000,
+      waitUntil: "networkidle"
     });
   });
 
@@ -146,6 +187,30 @@ describe("runBrowserSmoke", () => {
     assert.match(check.summary, /shipproof-screenshots/);
   });
 
+  it("includes dev server log paths in the proof summary", async () => {
+    const check = await runBrowserSmoke({
+      plan: {
+        framework: "next",
+        devCommand: "npm run dev -- --hostname 127.0.0.1 --port 4173",
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/"],
+        screenshotDir: "shipproof-screenshots",
+        logDir: "shipproof-browser-logs"
+      },
+      startServer: async () => ({
+        logs: {
+          stdout: "shipproof-browser-logs/server.stdout.log",
+          stderr: "shipproof-browser-logs/server.stderr.log"
+        },
+        stop: async () => {}
+      }),
+      checkRoutes: async () => [{ route: "/", status: "passed", screenshot: "shipproof-screenshots/home.png" }]
+    });
+
+    assert.equal(check.status, "passed");
+    assert.match(check.summary, /server logs: shipproof-browser-logs\/server\.stdout\.log, shipproof-browser-logs\/server\.stderr\.log/);
+  });
+
   it("fails when a route reports console or network errors", async () => {
     const check = await runBrowserSmoke({
       plan: {
@@ -169,4 +234,145 @@ describe("runBrowserSmoke", () => {
     assert.equal(check.status, "failed");
     assert.match(check.summary, /\/ failed: console error: Hydration failed/);
   });
+
+  it("marks missing Playwright as not checked when browser smoke is advisory", async () => {
+    const check = await runBrowserSmoke({
+      plan: {
+        framework: "vite",
+        devCommand: null,
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/"],
+        screenshotDir: "shipproof-screenshots",
+        required: false
+      },
+      checkRoutes: async () => {
+        throw new Error("Playwright is not installed. Add playwright or @playwright/test to enable browser smoke checks.");
+      }
+    });
+
+    assert.equal(check.status, "not_checked");
+    assert.equal(check.required, false);
+    assert.match(check.summary, /Playwright is not installed/);
+  });
 });
+
+describe("startDevServer", () => {
+  it("waits on the configured ready URL with timeout and records logs", async () => {
+    const writes = [];
+    let waitedUrl = null;
+    let waitedOptions = null;
+    const child = createFakeChild();
+
+    const server = await startDevServer(
+      {
+        devCommand: "npm run dev",
+        baseUrl: "http://127.0.0.1:4173",
+        readyUrl: "http://127.0.0.1:4173/health",
+        timeoutMs: 12000,
+        logDir: "artifacts/browser-logs"
+      },
+      {
+        cwd: "/repo",
+        spawnImpl: () => child,
+        mkdirImpl: async () => {},
+        writeLog: async (file, chunk) => writes.push({ file, chunk: chunk.toString() }),
+        waitForServerImpl: async (url, options) => {
+          waitedUrl = url;
+          waitedOptions = options;
+        }
+      }
+    );
+
+    child.stdout.emit("data", Buffer.from("ready\n"));
+    child.stderr.emit("data", Buffer.from("warn\n"));
+    await server.stop();
+
+    assert.equal(waitedUrl, "http://127.0.0.1:4173/health");
+    assert.deepEqual(waitedOptions, { timeoutMs: 12000 });
+    assert.equal(server.logs.stdout, "artifacts/browser-logs/server.stdout.log");
+    assert.equal(server.logs.stderr, "artifacts/browser-logs/server.stderr.log");
+    assert.equal(child.killed, true);
+    assert.deepEqual(writes, [
+      { file: "/repo/artifacts/browser-logs/server.stdout.log", chunk: "ready\n" },
+      { file: "/repo/artifacts/browser-logs/server.stderr.log", chunk: "warn\n" }
+    ]);
+  });
+
+  it("fails with log paths when the dev server exits before readiness", async () => {
+    const child = createFakeChild();
+    const promise = startDevServer(
+      {
+        devCommand: "npm run dev",
+        baseUrl: "http://127.0.0.1:4173",
+        logDir: "shipproof-browser-logs"
+      },
+      {
+        cwd: "/repo",
+        spawnImpl: () => child,
+        mkdirImpl: async () => {},
+        writeLog: async () => {},
+        waitForServerImpl: async () => new Promise(() => {})
+      }
+    );
+
+    setImmediate(() => child.emit("close", 1));
+
+    await assert.rejects(
+      promise,
+      /Dev server exited before ready at http:\/\/127\.0\.0\.1:4173 \(exit code 1\); logs: shipproof-browser-logs\/server\.stdout\.log, shipproof-browser-logs\/server\.stderr\.log/
+    );
+  });
+});
+
+describe("checkRoutesWithPlaywright", () => {
+  it("uses configured route waitUntil and timeout values", async () => {
+    let gotoOptions = null;
+    const page = {
+      on: () => {},
+      goto: async (_url, options) => {
+        gotoOptions = options;
+      },
+      screenshot: async () => {},
+      close: async () => {}
+    };
+    const browser = {
+      newPage: async () => page,
+      close: async () => {}
+    };
+
+    await checkRoutesWithPlaywright(
+      {
+        framework: "vite",
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/"],
+        screenshotDir: "shipproof-screenshots",
+        waitUntil: "domcontentloaded",
+        timeoutMs: 9000
+      },
+      {
+        projectDir: process.cwd(),
+        playwright: {
+          chromium: {
+            launch: async () => browser
+          }
+        }
+      }
+    );
+
+    assert.deepEqual(gotoOptions, {
+      waitUntil: "domcontentloaded",
+      timeout: 9000
+    });
+  });
+});
+
+function createFakeChild() {
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.killed = false;
+  child.kill = () => {
+    child.killed = true;
+  };
+  return child;
+}

@@ -59,6 +59,7 @@ jobs:
           report-path: shipproof-report.md
           json-report-path: shipproof-report.json
           screenshot-dir: shipproof-screenshots
+          browser-log-dir: shipproof-browser-logs
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -89,6 +90,8 @@ The action reads changed files from the pull request, writes Markdown and JSON r
 If GitHub does not grant comment permissions, ShipProof still writes report artifacts and the step summary. In that case the run reports `commentAction: skipped-permission` instead of failing the proof only because a PR comment could not be written.
 
 Browser smoke checks run automatically for detected Next.js and Vite projects when frontend files change. ShipProof can reuse an existing dev server with `browser-base-url`, otherwise it starts the detected `dev` script. The target project must have `playwright` or `@playwright/test` installed for real browser checks.
+
+Browser smoke writes route screenshots and, when ShipProof starts the dev server, stdout/stderr logs. See `docs/browser-smoke.md`.
 
 Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision.
 

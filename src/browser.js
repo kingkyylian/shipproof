@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir } from "node:fs/promises";
+import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
 const DEFAULT_PORT = 4173;
 const DEFAULT_SCREENSHOT_DIR = "shipproof-screenshots";
+const DEFAULT_LOG_DIR = "shipproof-browser-logs";
+const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_WAIT_UNTIL = "networkidle";
 const ROUTE_FILE_PATTERN = /\.(jsx|tsx|js|ts)$/;
 
 export function detectFrontendFramework(packageJson, { port = DEFAULT_PORT } = {}) {
@@ -76,12 +79,18 @@ export function createBrowserSmokePlan({
     return null;
   }
 
+  const resolvedBaseUrl = baseUrl ?? config.baseUrl ?? `http://127.0.0.1:${framework.port}`;
+
   const plan = {
     framework: framework.name,
-    devCommand: baseUrl ? null : framework.devCommand,
-    baseUrl: baseUrl ?? config.baseUrl ?? `http://127.0.0.1:${framework.port}`,
+    devCommand: baseUrl || config.baseUrl ? null : framework.devCommand,
+    baseUrl: resolvedBaseUrl,
     routes,
-    screenshotDir: config.screenshotDir ?? screenshotDir
+    screenshotDir: config.screenshotDir ?? screenshotDir,
+    logDir: config.logDir ?? DEFAULT_LOG_DIR,
+    readyUrl: config.readyUrl ?? resolvedBaseUrl,
+    timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    waitUntil: config.waitUntil ?? DEFAULT_WAIT_UNTIL
   };
 
   if (config.required !== undefined) {
@@ -108,17 +117,19 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
       command: `playwright smoke (${plan.framework})`,
       status: failures.length > 0 ? "failed" : "passed",
       durationMs: Math.round(performance.now() - startedAt),
-      summary: summarizeBrowserResults(routeResults, plan.screenshotDir),
+      summary: appendLogSummary(summarizeBrowserResults(routeResults, plan.screenshotDir), server?.logs),
       required: plan.required ?? true
     };
   } catch (error) {
+    const required = plan.required ?? true;
+
     return {
       name: "browser-smoke",
       command: `playwright smoke (${plan.framework})`,
-      status: "failed",
+      status: !required && isMissingPlaywrightError(error) ? "not_checked" : "failed",
       durationMs: Math.round(performance.now() - startedAt),
       summary: error.message,
-      required: plan.required ?? true
+      required
     };
   } finally {
     if (server) {
@@ -127,26 +138,61 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
   }
 }
 
-export async function startDevServer(plan, { cwd = process.cwd(), spawnImpl = spawn, waitForServerImpl = waitForServer } = {}) {
+export async function startDevServer(
+  plan,
+  {
+    cwd = process.cwd(),
+    spawnImpl = spawn,
+    waitForServerImpl = waitForServer,
+    mkdirImpl = mkdir,
+    writeLog = appendFile
+  } = {}
+) {
+  const logDir = plan.logDir ?? DEFAULT_LOG_DIR;
+  const logs = {
+    stdout: path.join(logDir, "server.stdout.log"),
+    stderr: path.join(logDir, "server.stderr.log")
+  };
+  const stdoutFile = path.resolve(cwd, logs.stdout);
+  const stderrFile = path.resolve(cwd, logs.stderr);
+
+  await mkdirImpl(path.resolve(cwd, logDir), { recursive: true });
+
   const child = spawnImpl(plan.devCommand, {
     cwd,
     shell: true,
     stdio: ["ignore", "pipe", "pipe"]
   });
-  let stderr = "";
 
+  child.stdout.on("data", (chunk) => {
+    writeLog(stdoutFile, chunk).catch(() => {});
+  });
   child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
+    writeLog(stderrFile, chunk).catch(() => {});
   });
 
-  try {
-    await waitForServerImpl(plan.baseUrl);
-  } catch (error) {
+  const readyUrl = plan.readyUrl ?? plan.baseUrl;
+  const readyResult = await Promise.race([
+    waitForServerImpl(readyUrl, { timeoutMs: plan.timeoutMs ?? DEFAULT_TIMEOUT_MS }).then(
+      () => ({ type: "ready" }),
+      (error) => ({ type: "not-ready", error })
+    ),
+    new Promise((resolve) => {
+      child.once("close", (code) => resolve({ type: "exited", code }));
+    })
+  ]);
+
+  if (readyResult.type === "exited") {
+    throw new Error(`Dev server exited before ready at ${readyUrl} (exit code ${readyResult.code ?? 1}); logs: ${logs.stdout}, ${logs.stderr}`);
+  }
+
+  if (readyResult.type === "not-ready") {
     child.kill("SIGTERM");
-    throw new Error(`Dev server did not become ready at ${plan.baseUrl}: ${error.message || stderr.trim()}`);
+    throw new Error(`Dev server did not become ready at ${readyUrl}: ${readyResult.error.message}; logs: ${logs.stdout}, ${logs.stderr}`);
   }
 
   return {
+    logs,
     stop: async () => {
       if (!child.killed) {
         child.kill("SIGTERM");
@@ -210,8 +256,8 @@ async function checkRoute({ browser, plan, route, screenshotRoot }) {
 
   try {
     await page.goto(new URL(route, plan.baseUrl).toString(), {
-      waitUntil: "networkidle",
-      timeout: 15000
+      waitUntil: plan.waitUntil ?? DEFAULT_WAIT_UNTIL,
+      timeout: plan.timeoutMs ?? DEFAULT_TIMEOUT_MS
     });
     await page.screenshot({ path: screenshot, fullPage: true });
   } catch (error) {
@@ -241,6 +287,18 @@ async function waitForServer(url, { timeoutMs = 30000, intervalMs = 500 } = {}) 
   }
 
   throw new Error(`timed out after ${timeoutMs}ms`);
+}
+
+function appendLogSummary(summary, logs) {
+  if (!logs) {
+    return summary;
+  }
+
+  return `${summary}; server logs: ${logs.stdout}, ${logs.stderr}`;
+}
+
+function isMissingPlaywrightError(error) {
+  return /Playwright is not installed/i.test(error?.message ?? "");
 }
 
 function inferNextRoute(file) {

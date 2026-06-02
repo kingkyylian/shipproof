@@ -21,6 +21,7 @@
     "CHANGELOG.md",
     "bin/",
     "src/",
+    "docs/browser-smoke.md",
     "docs/configuration.md",
     "docs/report-schema.md",
     "docs/live-github-verification.md"
