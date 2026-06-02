@@ -142,13 +142,14 @@ export function createProofReport({
   });
   const suggestedNextTests = suggestNextTests(risks);
   const rerunCommands = suggestRerunCommands({ checks: checkResults, changedFiles, status, decision });
+  const activeSecurityFindings = securityFindings.filter((finding) => finding.status !== "baseline");
   const agentFeedbackPrompt = createAgentFeedbackPrompt({
     decision,
     status,
     score,
     checks: checkResults,
     risks,
-    securityFindings,
+    securityFindings: activeSecurityFindings,
     suggestedNextTests,
     changedFiles
   });
@@ -347,11 +348,11 @@ export function renderProofReport({
   }
 
   if (securityFindings.length > 0) {
-    lines.push("", "## Security Findings", "", "| Finding | Severity | Location | Message | Snippet |", "| --- | --- | --- | --- | --- |");
+    lines.push("", "## Security Findings", "", "| Finding | Severity | Status | Location | Message | Snippet |", "| --- | --- | --- | --- | --- | --- |");
 
     for (const finding of securityFindings) {
       lines.push(
-        `| ${finding.id} | ${finding.severity} | \`${formatSecurityLocation(finding)}\` | ${escapeTableCell(finding.message)} | ${escapeTableCell(finding.snippet ?? "")} |`
+        `| ${finding.id} | ${finding.severity} | ${escapeTableCell(formatSecurityStatus(finding))} | \`${formatSecurityLocation(finding)}\` | ${escapeTableCell(finding.message)} | ${escapeTableCell(finding.snippet ?? "")} |`
       );
     }
   }
@@ -418,6 +419,14 @@ function formatSecurityLocation(finding) {
   }
 
   return `${finding.file}:${finding.line}`;
+}
+
+function formatSecurityStatus(finding) {
+  if (finding.status === "baseline") {
+    return `baseline${finding.baselineReason ? `: ${finding.baselineReason}` : ""}`;
+  }
+
+  return "active";
 }
 
 function escapeTableCell(value) {

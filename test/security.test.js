@@ -132,6 +132,94 @@ describe("scanSecurityFindings", () => {
       ["unsafe-cors"]
     );
   });
+
+  it("marks matching baseline findings without blocking the proof", () => {
+    const files = [
+      {
+        path: "src/api/legacy/route.ts",
+        content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+      }
+    ];
+    const findings = scanSecurityFindings(files, {
+      now: new Date("2026-06-02T12:00:00.000Z"),
+      baseline: [
+        {
+          id: "unsafe-cors",
+          file: "src/api/legacy/route.ts",
+          line: 1,
+          reason: "Legacy endpoint is tracked until the auth rewrite lands.",
+          expiresAt: "2026-07-01"
+        }
+      ]
+    });
+
+    assert.deepEqual(findings, [
+      {
+        id: "unsafe-cors",
+        severity: "high",
+        file: "src/api/legacy/route.ts",
+        line: 1,
+        column: 41,
+        snippet: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`,
+        message: "Wildcard CORS allows any origin.",
+        allowlistHint: "Add security.allow with id, file, line, reason, and expiresAt if this is intentional.",
+        status: "baseline",
+        baselineReason: "Legacy endpoint is tracked until the auth rewrite lands.",
+        baselineExpiresAt: "2026-07-01"
+      }
+    ]);
+    assert.deepEqual(buildSecurityCheck(findings), {
+      name: "security-lite",
+      command: "shipproof security-lite",
+      status: "passed",
+      summary: "No active security-lite findings; 1 baseline finding",
+      required: true
+    });
+    assert.deepEqual(
+      calculateShipScore({
+        status: "passed",
+        checks: [{ name: "security-lite", status: "passed", required: true }],
+        risks: [],
+        securityFindings: findings
+      }),
+      {
+        score: 100,
+        decision: "ship"
+      }
+    );
+  });
+
+  it("treats expired baseline entries as active findings", () => {
+    const findings = scanSecurityFindings(
+      [
+        {
+          path: "src/api/legacy/route.ts",
+          content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+        }
+      ],
+      {
+        now: new Date("2026-06-02T12:00:00.000Z"),
+        baseline: [
+          {
+            id: "unsafe-cors",
+            file: "src/api/legacy/route.ts",
+            line: 1,
+            reason: "Expired baseline.",
+            expiresAt: "2026-05-01"
+          }
+        ]
+      }
+    );
+
+    assert.equal(findings[0].status, undefined);
+    assert.deepEqual(buildSecurityCheck(findings), {
+      name: "security-lite",
+      command: "shipproof security-lite",
+      status: "failed",
+      summary: "1 high security finding",
+      required: true
+    });
+  });
 });
 
 function corsHeader() {
@@ -175,6 +263,23 @@ describe("createSecuritySarif", () => {
         }
       ]
     });
+  });
+
+  it("omits baseline findings from SARIF results", () => {
+    const sarif = createSecuritySarif([
+      {
+        id: "unsafe-cors",
+        severity: "high",
+        status: "baseline",
+        file: "src/api/legacy/route.ts",
+        line: 1,
+        column: 41,
+        message: "Wildcard CORS allows any origin."
+      }
+    ]);
+
+    assert.deepEqual(sarif.runs[0].tool.driver.rules, []);
+    assert.deepEqual(sarif.runs[0].results, []);
   });
 });
 

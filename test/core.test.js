@@ -211,6 +211,35 @@ describe("renderProofReport", () => {
     assert.match(markdown, /Wildcard CORS allows any origin/);
   });
 
+  it("renders baseline security finding status and reason", () => {
+    const markdown = renderProofReport({
+      status: "passed",
+      generatedAt: "2026-06-02T18:40:00.000Z",
+      decision: "ship",
+      score: 100,
+      checks: [
+        { name: "security-lite", command: "shipproof security-lite", status: "passed", summary: "No active security-lite findings; 1 baseline finding" }
+      ],
+      risks: [],
+      securityFindings: [
+        {
+          id: "unsafe-cors",
+          severity: "high",
+          status: "baseline",
+          baselineReason: "Legacy endpoint tracked until rewrite.",
+          file: "src/api/legacy/route.ts",
+          line: 1,
+          message: "Wildcard CORS allows any origin."
+        }
+      ],
+      suggestedNextTests: []
+    });
+
+    assert.match(markdown, /## Security Findings/);
+    assert.match(markdown, /\| Finding \| Severity \| Status \| Location \| Message \| Snippet \|/);
+    assert.match(markdown, /baseline: Legacy endpoint tracked until rewrite/);
+  });
+
   it("renders failed check details, rerun commands, and artifact references when present", () => {
     const markdown = renderProofReport({
       status: "failed",
@@ -571,6 +600,7 @@ describe("runProof", () => {
 
     assert.deepEqual(receivedSecurityConfig, {
       enabled: true,
+      baseline: [],
       allow: [
         {
           id: "unsafe-cors",

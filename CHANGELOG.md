@@ -15,6 +15,7 @@ No changes yet.
 - Agent feedback prompts for `review` and `no-ship` reports.
 - Browser smoke server logs, readiness controls, route timeouts, and advisory missing-Playwright handling.
 - Security-lite line numbers, redacted snippets, allowlist policy, and SARIF output.
+- Security-lite baseline findings for visible non-blocking lifecycle tracking.
 - Monorepo workspace detection with package-local proof commands and workspace browser smoke planning.
 - Report UX sections for failed check excerpts, concrete rerun commands, and generated artifact references.
 
