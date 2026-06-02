@@ -58,7 +58,7 @@ Expired entries and entries without `reason` do not suppress findings.
 GitHub Action mode writes SARIF security-lite results to `shipproof-security.sarif` by default. Override it with:
 
 ```yaml
-- uses: kingkyylian/shipproof@v0.1.0
+- uses: kingkyylian/shipproof@v0.2.0
   with:
     github-token: ${{ github.token }}
     security-sarif-path: artifacts/shipproof-security.sarif
