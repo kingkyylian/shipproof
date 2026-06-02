@@ -26,7 +26,8 @@ export const DEFAULT_SHIPPROOF_CONFIG = {
   },
   reports: {
     markdown: "shipproof-report.md",
-    json: "shipproof-report.json"
+    json: "shipproof-report.json",
+    sarif: "shipproof-security.sarif"
   }
 };
 

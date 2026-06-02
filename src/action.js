@@ -2,7 +2,7 @@ import { createBrowserSmokePlan, runBrowserSmoke } from "./browser.js";
 import { resolveShipProofConfig } from "./config.js";
 import { runProof } from "./core.js";
 import { getPullRequestContext, listPullRequestFiles, upsertShipProofComment } from "./github.js";
-import { scanSecurityFindingsFromDisk } from "./security.js";
+import { createSecuritySarif, scanSecurityFindingsFromDisk } from "./security.js";
 
 export async function runGitHubProof({
   packageJson,
@@ -16,6 +16,7 @@ export async function runGitHubProof({
   config,
   writeReport,
   writeJsonReport,
+  writeSecuritySarif,
   appendSummary
 }) {
   const resolvedConfig = resolveShipProofConfig(config);
@@ -33,17 +34,22 @@ export async function runGitHubProof({
     executeCommand,
     securityScan: () =>
       securityScan
-        ? securityScan({ changedFiles: resolvedChangedFiles })
-        : scanSecurityFindingsFromDisk({ changedFiles: resolvedChangedFiles }),
+        ? securityScan({ changedFiles: resolvedChangedFiles, securityConfig: resolvedConfig.security })
+        : scanSecurityFindingsFromDisk({ changedFiles: resolvedChangedFiles, config: resolvedConfig.security }),
     browserSmoke: browserPlan ? () => browserSmoke({ plan: browserPlan }) : null
   });
   const reportPath = env.INPUT_REPORT_PATH || env.SHIPPROOF_REPORT_PATH || resolvedConfig.reports.markdown;
   const jsonReportPath = env.INPUT_JSON_REPORT_PATH || env.SHIPPROOF_JSON_REPORT_PATH || resolvedConfig.reports.json;
+  const securitySarifPath = env.INPUT_SECURITY_SARIF_PATH || env.SHIPPROOF_SECURITY_SARIF_PATH || resolvedConfig.reports.sarif;
 
   await writeReport(reportPath, report.markdown);
 
   if (writeJsonReport) {
     await writeJsonReport(jsonReportPath, report);
+  }
+
+  if (writeSecuritySarif) {
+    await writeSecuritySarif(securitySarifPath, createSecuritySarif(report.securityFindings));
   }
 
   if (appendSummary) {
@@ -73,6 +79,7 @@ export async function runGitHubProof({
     report,
     reportPath,
     jsonReportPath,
+    securitySarifPath,
     changedFiles: resolvedChangedFiles,
     commentAction
   };

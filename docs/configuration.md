@@ -26,7 +26,15 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
   },
   "security": {
     "enabled": true,
-    "allow": []
+    "allow": [
+      {
+        "id": "unsafe-cors",
+        "file": "src/api/public-demo/route.ts",
+        "line": 12,
+        "reason": "Public demo endpoint without credentials.",
+        "expiresAt": "2026-07-01"
+      }
+    ]
   },
   "score": {
     "ship": 80,
@@ -34,7 +42,8 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
   },
   "reports": {
     "markdown": "shipproof-report.md",
-    "json": "shipproof-report.json"
+    "json": "shipproof-report.json",
+    "sarif": "shipproof-security.sarif"
   }
 }
 ```
@@ -56,7 +65,7 @@ Use `config-path` to pass the same config into GitHub mode:
     config-path: shipproof.config.json
 ```
 
-Action inputs still override CI-specific values such as report paths, browser base URL, and screenshot directory.
+Action inputs still override CI-specific values such as report paths, SARIF path, browser base URL, and screenshot directory.
 
 ## Policy
 
@@ -71,7 +80,9 @@ Action inputs still override CI-specific values such as report paths, browser ba
 - `browser.timeoutMs`: controls readiness and route navigation timeout.
 - `browser.waitUntil`: controls Playwright route navigation readiness.
 - `security.enabled`: disables security-lite checks when `false`.
+- `security.allow`: suppresses intentional findings when `id`, `file`, optional `line`, `reason`, and non-expired `expiresAt` match.
 - `score.ship`: minimum score for `ship`.
 - `score.review`: minimum score before `no-ship`.
 - `reports.markdown`: default Markdown artifact path in GitHub mode.
 - `reports.json`: default JSON artifact path in GitHub mode.
+- `reports.sarif`: default SARIF security-lite artifact path in GitHub mode.

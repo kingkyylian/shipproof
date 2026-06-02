@@ -7,6 +7,7 @@ describe("runGitHubProof", () => {
   it("reads PR files, writes artifact markdown, appends step summary, and comments by default", async () => {
     const writes = [];
     const jsonWrites = [];
+    const sarifWrites = [];
     const summaries = [];
     const requests = [];
 
@@ -16,9 +17,19 @@ describe("runGitHubProof", () => {
       env: {
         GITHUB_REPOSITORY: "acme/demo",
         INPUT_REPORT_PATH: "artifacts/proof.md",
-        INPUT_JSON_REPORT_PATH: "artifacts/proof.json"
+        INPUT_JSON_REPORT_PATH: "artifacts/proof.json",
+        INPUT_SECURITY_SARIF_PATH: "artifacts/security.sarif"
       },
       executeCommand: async () => ({ exitCode: 0, durationMs: 25, stdout: "ok" }),
+      securityScan: async () => [
+        {
+          id: "auth-sensitive-change",
+          severity: "medium",
+          file: "middleware.ts",
+          line: 1,
+          message: "Authentication-sensitive files changed and need explicit auth coverage."
+        }
+      ],
       request: async (path, options = {}) => {
         requests.push({ path, options });
 
@@ -38,11 +49,13 @@ describe("runGitHubProof", () => {
       },
       writeReport: async (file, markdown) => writes.push({ file, markdown }),
       writeJsonReport: async (file, payload) => jsonWrites.push({ file, payload }),
+      writeSecuritySarif: async (file, payload) => sarifWrites.push({ file, payload }),
       appendSummary: async (markdown) => summaries.push(markdown)
     });
 
     assert.equal(result.reportPath, "artifacts/proof.md");
     assert.equal(result.jsonReportPath, "artifacts/proof.json");
+    assert.equal(result.securitySarifPath, "artifacts/security.sarif");
     assert.equal(result.commentAction, "created");
     assert.deepEqual(result.changedFiles, ["middleware.ts"]);
     assert.equal(writes.length, 1);
@@ -54,6 +67,9 @@ describe("runGitHubProof", () => {
       }
     ]);
     assert.equal(jsonWrites[0].payload.schemaVersion, "1.0");
+    assert.equal(sarifWrites[0].file, "artifacts/security.sarif");
+    assert.equal(sarifWrites[0].payload.version, "2.1.0");
+    assert.equal(sarifWrites[0].payload.runs[0].results[0].ruleId, "auth-sensitive-change");
     assert.deepEqual(summaries, [writes[0].markdown]);
     assert.equal(requests.at(-1).path, "/repos/acme/demo/issues/42/comments");
   });

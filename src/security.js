@@ -3,57 +3,59 @@ import path from "node:path";
 
 const SECRET_ASSIGNMENT = /^\s*([A-Z0-9_]*(?:SECRET|TOKEN|API_KEY|PASSWORD|PRIVATE_KEY|ACCESS_KEY)[A-Z0-9_]*)\s*=\s*["']?([^"'\s#;]+)/gim;
 const PLACEHOLDER_VALUE = /^(your_.*|changeme|change_me|example|dummy|test|todo|xxx|<.+>)$/i;
+const PUBLIC_SECRET = /\b(NEXT_PUBLIC_[A-Z0-9_]*(?:SECRET|TOKEN|PRIVATE_KEY|ACCESS_KEY)\b)\s*=/gi;
+const UNSAFE_CORS_PATTERNS = [
+  /access-control-allow-origin['"]?\s*[:=]\s*['"]\*/i,
+  /origin\s*:\s*['"]\*['"]/i
+];
+const ALLOWLIST_HINT = "Add security.allow with id, file, line, reason, and expiresAt if this is intentional.";
+const SARIF_LEVEL_BY_SEVERITY = {
+  high: "error",
+  medium: "warning",
+  low: "note"
+};
 
-export function scanSecurityFindings(files) {
+export function scanSecurityFindings(files, config = {}) {
   const findings = [];
+  const allow = Array.isArray(config.allow) ? config.allow : [];
+  const now = toDate(config.now) ?? new Date();
 
   for (const file of files) {
     const normalizedPath = normalizePath(file.path);
     const content = file.content ?? "";
 
     if (isCommittedEnvFile(normalizedPath)) {
-      findings.push({
+      findings.push(withAllowlistHint({
         id: "committed-env-file",
         severity: "high",
         file: file.path,
+        line: 1,
+        column: 1,
         message: "Runtime environment files should not be committed."
-      });
+      }));
     }
 
     findings.push(...findSecretFindings(file.path, content));
 
-    if (hasUnsafeCors(content)) {
-      findings.push({
-        id: "unsafe-cors",
-        severity: "high",
-        file: file.path,
-        message: "Wildcard CORS allows any origin."
-      });
-    }
-
-    if (hasPublicSecret(content)) {
-      findings.push({
-        id: "public-secret",
-        severity: "high",
-        file: file.path,
-        message: "Public client environment variables should not contain secrets or tokens."
-      });
-    }
+    findings.push(...findUnsafeCorsFindings(file.path, content));
+    findings.push(...findPublicSecretFindings(file.path, content));
 
     if (isAuthSensitivePath(normalizedPath)) {
-      findings.push({
+      findings.push(withAllowlistHint({
         id: "auth-sensitive-change",
         severity: "medium",
         file: file.path,
+        line: content ? 1 : undefined,
+        column: content ? 1 : undefined,
         message: "Authentication-sensitive files changed and need explicit auth coverage."
-      });
+      }));
     }
   }
 
-  return findings;
+  return findings.filter((finding) => !isAllowlisted(finding, allow, now));
 }
 
-export async function scanSecurityFindingsFromDisk({ changedFiles, cwd = process.cwd() }) {
+export async function scanSecurityFindingsFromDisk({ changedFiles, cwd = process.cwd(), config } = {}) {
   const files = [];
 
   for (const changedFile of changedFiles) {
@@ -65,7 +67,7 @@ export async function scanSecurityFindingsFromDisk({ changedFiles, cwd = process
     }
   }
 
-  return scanSecurityFindings(files);
+  return scanSecurityFindings(files, config);
 }
 
 export function buildSecurityCheck(findings) {
@@ -125,6 +127,43 @@ export function calculateShipScore({ status, checks, risks, securityFindings, th
   };
 }
 
+export function createSecuritySarif(findings = []) {
+  const rulesById = new Map();
+
+  for (const finding of findings) {
+    if (!rulesById.has(finding.id)) {
+      rulesById.set(finding.id, {
+        id: finding.id,
+        name: finding.id,
+        shortDescription: { text: finding.message },
+        defaultConfiguration: { level: toSarifLevel(finding.severity) }
+      });
+    }
+  }
+
+  return {
+    version: "2.1.0",
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "ShipProof security-lite",
+            informationUri: "https://github.com/kingkyylian/shipproof",
+            rules: [...rulesById.values()]
+          }
+        },
+        results: findings.map((finding) => ({
+          ruleId: finding.id,
+          level: toSarifLevel(finding.severity),
+          message: { text: finding.message },
+          locations: [toSarifLocation(finding)]
+        }))
+      }
+    ]
+  };
+}
+
 function findSecretFindings(file, content) {
   const findings = [];
   const matches = content.matchAll(SECRET_ASSIGNMENT);
@@ -137,26 +176,67 @@ function findSecretFindings(file, content) {
       continue;
     }
 
-    findings.push({
+    const location = locationForIndex(content, match.index ?? 0);
+    findings.push(withAllowlistHint({
       id: "possible-secret",
       severity: "high",
       file,
+      line: location.line,
+      column: location.column,
+      snippet: redactSecretSnippet(location.text, name),
       message: `${name} looks like a committed secret.`
-    });
+    }));
   }
 
   return findings;
 }
 
-function hasUnsafeCors(content) {
-  return (
-    /access-control-allow-origin['"]?\s*[:=]\s*['"]\*/i.test(content) ||
-    /origin\s*:\s*['"]\*['"]/i.test(content)
-  );
+function findUnsafeCorsFindings(file, content) {
+  const findings = [];
+
+  for (const pattern of UNSAFE_CORS_PATTERNS) {
+    const match = pattern.exec(content);
+
+    if (!match) {
+      continue;
+    }
+
+    const location = locationForIndex(content, match.index ?? 0);
+    findings.push(withAllowlistHint({
+      id: "unsafe-cors",
+      severity: "high",
+      file,
+      line: location.line,
+      column: location.column,
+      snippet: location.text.trim(),
+      message: "Wildcard CORS allows any origin."
+    }));
+    break;
+  }
+
+  return findings;
 }
 
-function hasPublicSecret(content) {
-  return /NEXT_PUBLIC_[A-Z0-9_]*(SECRET|TOKEN|PRIVATE_KEY|ACCESS_KEY)\b\s*=/i.test(content);
+function findPublicSecretFindings(file, content) {
+  const findings = [];
+  const matches = content.matchAll(PUBLIC_SECRET);
+
+  for (const match of matches) {
+    const name = match[1];
+    const location = locationForIndex(content, match.index ?? 0);
+
+    findings.push(withAllowlistHint({
+      id: "public-secret",
+      severity: "high",
+      file,
+      line: location.line,
+      column: location.column,
+      snippet: redactSecretSnippet(location.text, name),
+      message: "Public client environment variables should not contain secrets or tokens."
+    }));
+  }
+
+  return findings;
 }
 
 function isCommittedEnvFile(file) {
@@ -178,6 +258,111 @@ function decide({ score, status, highSecurity, thresholds }) {
   }
 
   return "ship";
+}
+
+function withAllowlistHint(finding) {
+  return {
+    ...finding,
+    allowlistHint: ALLOWLIST_HINT
+  };
+}
+
+function isAllowlisted(finding, allow, now) {
+  return allow.some((entry) => {
+    if (!entry?.id || !entry?.file || !entry.reason || isExpired(entry.expiresAt, now)) {
+      return false;
+    }
+
+    if (!matchesPattern(entry.id, finding.id)) {
+      return false;
+    }
+
+    if (!matchesPattern(normalizePath(entry.file), normalizePath(finding.file))) {
+      return false;
+    }
+
+    return entry.line === undefined || Number(entry.line) === finding.line;
+  });
+}
+
+function isExpired(expiresAt, now) {
+  if (!expiresAt) {
+    return false;
+  }
+
+  const expiry = toDate(expiresAt);
+  return expiry ? expiry < now : true;
+}
+
+function matchesPattern(pattern, value) {
+  if (pattern === "*") {
+    return true;
+  }
+
+  if (!pattern.includes("*")) {
+    return pattern === value;
+  }
+
+  const source = pattern.split("*").map(escapeRegExp).join(".*");
+  return new RegExp(`^${source}$`).test(value);
+}
+
+function locationForIndex(content, index) {
+  const before = content.slice(0, index);
+  const line = before.split("\n").length;
+  const lineStart = before.lastIndexOf("\n") + 1;
+  const lineEnd = content.indexOf("\n", index);
+  const text = content.slice(lineStart, lineEnd === -1 ? content.length : lineEnd);
+
+  return {
+    line,
+    column: index - lineStart + 1,
+    text
+  };
+}
+
+function redactSecretSnippet(line, name) {
+  const pattern = new RegExp(`(${escapeRegExp(name)}\\s*=\\s*)(["'])?[^"'\\s#;]+`, "i");
+  return line.trim().replace(pattern, `${name}=[redacted]`);
+}
+
+function toSarifLocation(finding) {
+  const physicalLocation = {
+    artifactLocation: { uri: normalizePath(finding.file) }
+  };
+
+  if (finding.line) {
+    physicalLocation.region = {
+      startLine: finding.line
+    };
+
+    if (finding.column) {
+      physicalLocation.region.startColumn = finding.column;
+    }
+  }
+
+  return { physicalLocation };
+}
+
+function toSarifLevel(severity) {
+  return SARIF_LEVEL_BY_SEVERITY[severity] ?? "warning";
+}
+
+function toDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizePath(file) {
