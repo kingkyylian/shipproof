@@ -3,6 +3,8 @@ import { createRequire } from "node:module";
 import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import { formatWorkspaceCommand } from "./workspace.js";
+
 const DEFAULT_PORT = 4173;
 const DEFAULT_SCREENSHOT_DIR = "shipproof-screenshots";
 const DEFAULT_LOG_DIR = "shipproof-browser-logs";
@@ -10,7 +12,7 @@ const DEFAULT_TIMEOUT_MS = 30000;
 const DEFAULT_WAIT_UNTIL = "networkidle";
 const ROUTE_FILE_PATTERN = /\.(jsx|tsx|js|ts)$/;
 
-export function detectFrontendFramework(packageJson, { port = DEFAULT_PORT } = {}) {
+export function detectFrontendFramework(packageJson, { port = DEFAULT_PORT, packageManager = "npm", workspaceName } = {}) {
   const scripts = packageJson?.scripts ?? {};
   const dependencies = {
     ...(packageJson?.dependencies ?? {}),
@@ -21,7 +23,7 @@ export function detectFrontendFramework(packageJson, { port = DEFAULT_PORT } = {
   if (dependencies.next || devScript.includes("next")) {
     return {
       name: "next",
-      devCommand: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+      devCommand: `${formatDevCommand({ packageManager, workspaceName })} -- --hostname 127.0.0.1 --port ${port}`,
       port
     };
   }
@@ -29,7 +31,7 @@ export function detectFrontendFramework(packageJson, { port = DEFAULT_PORT } = {
   if (dependencies.vite || devScript.includes("vite")) {
     return {
       name: "vite",
-      devCommand: `npm run dev -- --host 127.0.0.1 --port ${port}`,
+      devCommand: `${formatDevCommand({ packageManager, workspaceName })} -- --host 127.0.0.1 --port ${port}`,
       port
     };
   }
@@ -58,13 +60,16 @@ export function createBrowserSmokePlan({
   baseUrl,
   port = DEFAULT_PORT,
   screenshotDir = DEFAULT_SCREENSHOT_DIR,
-  config = {}
+  config = {},
+  packageRoot,
+  workspaceName,
+  packageManager = "npm"
 }) {
   if (config.enabled === false) {
     return null;
   }
 
-  const framework = detectFrontendFramework(packageJson, { port });
+  const framework = detectFrontendFramework(packageJson, { port, packageManager, workspaceName });
 
   if (!framework) {
     return null;
@@ -92,6 +97,15 @@ export function createBrowserSmokePlan({
     timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     waitUntil: config.waitUntil ?? DEFAULT_WAIT_UNTIL
   };
+
+  if (packageRoot) {
+    plan.packageRoot = packageRoot;
+  }
+
+  if (workspaceName) {
+    plan.workspaceName = workspaceName;
+    plan.packageManager = packageManager;
+  }
 
   if (config.required !== undefined) {
     plan.required = config.required;
@@ -201,8 +215,9 @@ export async function startDevServer(
   };
 }
 
-export async function checkRoutesWithPlaywright(plan, { projectDir = process.cwd(), playwright } = {}) {
-  const runtime = playwright ?? loadPlaywright(projectDir);
+export async function checkRoutesWithPlaywright(plan, { projectDir = process.cwd(), playwright, loadPlaywrightImpl = loadPlaywright } = {}) {
+  const runtimeProjectDir = path.resolve(projectDir, plan.packageRoot ?? ".");
+  const runtime = playwright ?? await loadPlaywrightImpl(runtimeProjectDir);
   const browser = await runtime.chromium.launch({ headless: true });
   const screenshotRoot = path.resolve(projectDir, plan.screenshotDir);
 
@@ -233,6 +248,14 @@ export function loadPlaywright(projectDir) {
       throw new Error("Playwright is not installed. Add playwright or @playwright/test to enable browser smoke checks.");
     }
   }
+}
+
+function formatDevCommand({ packageManager, workspaceName }) {
+  if (workspaceName) {
+    return formatWorkspaceCommand({ packageManager, workspace: workspaceName, script: "dev" });
+  }
+
+  return "npm run dev";
 }
 
 async function checkRoute({ browser, plan, route, screenshotRoot }) {

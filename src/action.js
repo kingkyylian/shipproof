@@ -14,6 +14,7 @@ export async function runGitHubProof({
   securityScan,
   browserSmoke = runBrowserSmoke,
   config,
+  loadWorkspace,
   writeReport,
   writeJsonReport,
   writeSecuritySarif,
@@ -26,11 +27,13 @@ export async function runGitHubProof({
     : context && request
     ? await listPullRequestFiles({ context, request })
     : [];
-  const browserPlan = createActionBrowserPlan({ packageJson, changedFiles: resolvedChangedFiles, env, config: resolvedConfig });
+  const workspaceContext = loadWorkspace ? await loadWorkspace({ changedFiles: resolvedChangedFiles }) : null;
+  const browserPlan = createActionBrowserPlan({ packageJson, changedFiles: resolvedChangedFiles, env, config: resolvedConfig, workspaceContext });
   const report = await runProof({
     packageJson,
     changedFiles: resolvedChangedFiles,
     config: resolvedConfig,
+    workspaceContext,
     executeCommand,
     securityScan: () =>
       securityScan
@@ -89,7 +92,7 @@ function isCommentPermissionError(error) {
   return error?.status === 403 || /resource not accessible by integration|forbidden/i.test(error?.message ?? "");
 }
 
-function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {
+function createActionBrowserPlan({ packageJson, changedFiles, env, config, workspaceContext }) {
   const browserConfig = config?.browser ?? {};
 
   if (env.INPUT_BROWSER_SMOKE === "false" || browserConfig.enabled === false) {
@@ -108,6 +111,23 @@ function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {
 
   if (planConfig.required === true) {
     delete planConfig.required;
+  }
+
+  for (const workspacePackage of workspaceContext?.changedPackages ?? []) {
+    const workspacePlan = createBrowserSmokePlan({
+      packageJson: workspacePackage.packageJson,
+      changedFiles,
+      baseUrl: planConfig.baseUrl,
+      screenshotDir: planConfig.screenshotDir,
+      config: planConfig,
+      packageRoot: workspacePackage.root,
+      workspaceName: workspacePackage.name,
+      packageManager: workspaceContext.packageManager
+    });
+
+    if (workspacePlan) {
+      return workspacePlan;
+    }
   }
 
   return createBrowserSmokePlan({

@@ -1,6 +1,7 @@
 import { buildSecurityCheck, calculateShipScore } from "./security.js";
 import { createAgentFeedbackPrompt } from "./agent-feedback.js";
 import { resolveShipProofConfig } from "./config.js";
+import { formatRootCommand, formatWorkspaceCommand } from "./workspace.js";
 
 const COMMAND_ORDER = [
   { script: "lint", command: "npm run lint", required: false },
@@ -56,18 +57,49 @@ const RISK_RULES = [
   }
 ];
 
-export function discoverProjectCommands(packageJson, config) {
+export function discoverProjectCommands(packageJson, config, workspaceContext = {}) {
   const scripts = packageJson?.scripts ?? {};
   const resolvedConfig = resolveShipProofConfig(config);
+  const resolvedWorkspaceContext = workspaceContext ?? {};
+  const workspacePackages = resolvedConfig.workspace.enabled === false
+    ? []
+    : resolvedWorkspaceContext.workspacePackages ?? resolvedWorkspaceContext.changedPackages ?? [];
+  const packageManager = resolvedWorkspaceContext.packageManager ?? "npm";
 
+  if (workspacePackages.length > 0) {
+    return [
+      ...(resolvedConfig.workspace.includeRoot ? discoverRootCommands(scripts, resolvedConfig, packageManager) : []),
+      ...workspacePackages.flatMap((workspacePackage) =>
+        discoverWorkspacePackageCommands({ workspacePackage, packageManager, config: resolvedConfig })
+      )
+    ];
+  }
+
+  return discoverRootCommands(scripts, resolvedConfig);
+}
+
+function discoverRootCommands(scripts, resolvedConfig, packageManager = "npm") {
   return COMMAND_ORDER
     .filter(({ script }) => typeof scripts[script] === "string")
-    .map(({ script, command, required }) => ({
+    .map(({ script, required }) => ({
       name: script,
-      command,
+      command: formatRootCommand({ packageManager, script }),
       required: isRequiredCheck(resolvedConfig.checks[script], required)
     }))
     .filter(Boolean);
+}
+
+function discoverWorkspacePackageCommands({ workspacePackage, packageManager, config }) {
+  const scripts = workspacePackage.packageJson?.scripts ?? {};
+  const workspace = workspacePackage.name ?? workspacePackage.root;
+
+  return COMMAND_ORDER
+    .filter(({ script }) => typeof scripts[script] === "string")
+    .map(({ script, required }) => ({
+      name: `${workspace}:${script}`,
+      command: formatWorkspaceCommand({ packageManager, workspace, script }),
+      required: isRequiredCheck(config.checks[script], required)
+    }));
 }
 
 export function classifyChangedFiles(files) {
@@ -99,7 +131,10 @@ export function createProofReport({
   const status = deriveStatus(checkResults, requiredByName);
   const { decision, score } = calculateShipScore({
     status,
-    checks: checkResults,
+    checks: checkResults.map((check) => ({
+      ...check,
+      required: check.required ?? requiredByName.get(check.name)
+    })),
     risks,
     securityFindings,
     thresholds: resolvedConfig.score
@@ -134,12 +169,12 @@ export function createProofReport({
   };
 }
 
-export async function runProof({ packageJson, changedFiles, generatedAt, config, executeCommand, securityScan, browserSmoke }) {
+export async function runProof({ packageJson, changedFiles, generatedAt, config, executeCommand, securityScan, browserSmoke, workspaceContext }) {
   const resolvedConfig = resolveShipProofConfig(config);
-  const checks = discoverProjectCommands(packageJson, resolvedConfig);
+  const checks = discoverProjectCommands(packageJson, resolvedConfig, workspaceContext);
   const checkResults = [];
   let securityFindings = [];
-  const requiredCheckNames = [];
+  const requiredCheckNames = checks.filter((check) => check.required).map((check) => check.name);
   let failedRequiredCheck = null;
 
   for (const check of checks) {

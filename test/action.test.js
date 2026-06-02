@@ -159,6 +159,54 @@ describe("runGitHubProof", () => {
     assert.deepEqual(requests, []);
   });
 
+  it("runs package-local checks for changed workspace packages", async () => {
+    const executed = [];
+
+    const result = await runGitHubProof({
+      packageJson: {
+        workspaces: ["apps/*"],
+        scripts: {
+          test: "node --test"
+        }
+      },
+      event: { pull_request: { number: 42 } },
+      env: {
+        GITHUB_REPOSITORY: "acme/demo",
+        INPUT_COMMENT: "false"
+      },
+      changedFiles: ["apps/web/src/App.tsx"],
+      loadWorkspace: async ({ changedFiles }) => {
+        assert.deepEqual(changedFiles, ["apps/web/src/App.tsx"]);
+        return {
+          packageManager: "npm",
+          changedPackages: [
+            {
+              name: "web",
+              root: "apps/web",
+              packageJson: {
+                scripts: {
+                  test: "vitest",
+                  build: "vite build"
+                }
+              }
+            }
+          ]
+        };
+      },
+      executeCommand: async (command) => {
+        executed.push(command);
+        return { exitCode: 0, durationMs: 25, stdout: "ok" };
+      },
+      request: async () => [],
+      writeReport: async () => {},
+      appendSummary: async () => {}
+    });
+
+    assert.deepEqual(executed, ["npm --workspace web test", "npm --workspace web run build"]);
+    assert.deepEqual(result.report.checks.map((check) => check.name), ["web:test", "web:build", "security-lite"]);
+    assert.equal(result.report.status, "passed");
+  });
+
   it("adds browser smoke proof when a supported frontend route changes", async () => {
     const browserPlans = [];
 
@@ -210,6 +258,69 @@ describe("runGitHubProof", () => {
       }
     ]);
     assert.deepEqual(result.report.checks.map((check) => check.name), ["test", "security-lite", "browser-smoke"]);
+    assert.equal(result.report.status, "passed");
+  });
+
+  it("builds browser smoke plans from changed workspace frontend packages", async () => {
+    const browserPlans = [];
+
+    const result = await runGitHubProof({
+      packageJson: {
+        workspaces: ["apps/*"]
+      },
+      event: { pull_request: { number: 42 } },
+      env: {
+        GITHUB_REPOSITORY: "acme/demo",
+        INPUT_COMMENT: "false"
+      },
+      changedFiles: ["apps/web/src/app/login/page.tsx"],
+      loadWorkspace: async () => ({
+        packageManager: "pnpm",
+        changedPackages: [
+          {
+            name: "web",
+            root: "apps/web",
+            packageJson: {
+              scripts: { dev: "next dev" },
+              dependencies: { next: "15.0.0" }
+            }
+          }
+        ]
+      }),
+      executeCommand: async () => ({ exitCode: 0, durationMs: 25 }),
+      request: async () => [],
+      browserSmoke: async ({ plan }) => {
+        browserPlans.push(plan);
+        return {
+          name: "browser-smoke",
+          command: "playwright smoke (next)",
+          status: "passed",
+          durationMs: 50,
+          summary: "1 routes passed; screenshots: shipproof-screenshots",
+          required: true
+        };
+      },
+      writeReport: async () => {},
+      appendSummary: async () => {}
+    });
+
+    assert.deepEqual(browserPlans, [
+      {
+        framework: "next",
+        devCommand: "pnpm --filter web dev -- --hostname 127.0.0.1 --port 4173",
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/login"],
+        screenshotDir: "shipproof-screenshots",
+        logDir: "shipproof-browser-logs",
+        readyUrl: "http://127.0.0.1:4173",
+        timeoutMs: 30000,
+        waitUntil: "networkidle",
+        packageRoot: "apps/web",
+        workspaceName: "web",
+        packageManager: "pnpm"
+      }
+    ]);
+    assert.deepEqual(result.report.checks.map((check) => check.name), ["security-lite", "browser-smoke"]);
     assert.equal(result.report.status, "passed");
   });
 });

@@ -31,6 +31,76 @@ describe("discoverProjectCommands", () => {
   it("returns an empty list when no proof-relevant scripts exist", () => {
     assert.deepEqual(discoverProjectCommands({ scripts: { dev: "next dev" } }), []);
   });
+
+  it("discovers only changed workspace package commands by default", () => {
+    assert.deepEqual(
+      discoverProjectCommands(
+        {
+          scripts: {
+            test: "node --test",
+            build: "node build.js"
+          }
+        },
+        undefined,
+        {
+          packageManager: "npm",
+          workspacePackages: [
+            {
+              name: "web",
+              root: "apps/web",
+              packageJson: {
+                scripts: {
+                  lint: "eslint .",
+                  test: "vitest",
+                  build: "vite build"
+                }
+              }
+            }
+          ]
+        }
+      ),
+      [
+        { name: "web:lint", command: "npm --workspace web run lint", required: false },
+        { name: "web:test", command: "npm --workspace web test", required: true },
+        { name: "web:build", command: "npm --workspace web run build", required: true }
+      ]
+    );
+  });
+
+  it("can include root checks when workspace config requests them", () => {
+    assert.deepEqual(
+      discoverProjectCommands(
+        {
+          scripts: {
+            test: "node --test"
+          }
+        },
+        {
+          workspace: {
+            includeRoot: true
+          }
+        },
+        {
+          packageManager: "pnpm",
+          workspacePackages: [
+            {
+              name: "web",
+              root: "apps/web",
+              packageJson: {
+                scripts: {
+                  test: "vitest"
+                }
+              }
+            }
+          ]
+        }
+      ),
+      [
+        { name: "test", command: "pnpm test", required: true },
+        { name: "web:test", command: "pnpm --filter web test", required: true }
+      ]
+    );
+  });
 });
 
 describe("classifyChangedFiles", () => {
@@ -442,5 +512,70 @@ describe("runProof", () => {
         }
       ]
     });
+  });
+
+  it("runs only changed workspace package checks", async () => {
+    const executed = [];
+    const report = await runProof({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      workspaceContext: {
+        packageManager: "npm",
+        changedPackages: [
+          {
+            name: "web",
+            root: "apps/web",
+            packageJson: {
+              scripts: {
+                test: "vitest",
+                build: "vite build"
+              }
+            }
+          }
+        ]
+      },
+      changedFiles: ["apps/web/src/App.tsx"],
+      generatedAt: "2026-06-02T18:00:00.000Z",
+      executeCommand: async (command) => {
+        executed.push(command);
+        return { exitCode: 0, durationMs: 50, stdout: "ok" };
+      }
+    });
+
+    assert.deepEqual(executed, ["npm --workspace web test", "npm --workspace web run build"]);
+    assert.deepEqual(report.checks.map((check) => check.name), ["web:test", "web:build"]);
+    assert.equal(report.status, "passed");
+  });
+
+  it("penalizes failed required workspace package checks in the score", async () => {
+    const report = await runProof({
+      packageJson: {
+        workspaces: ["apps/*"]
+      },
+      workspaceContext: {
+        packageManager: "npm",
+        changedPackages: [
+          {
+            name: "web",
+            root: "apps/web",
+            packageJson: {
+              scripts: {
+                test: "vitest"
+              }
+            }
+          }
+        ]
+      },
+      changedFiles: ["apps/web/src/App.tsx"],
+      generatedAt: "2026-06-02T18:10:00.000Z",
+      executeCommand: async () => ({ exitCode: 1, durationMs: 50, stderr: "workspace test failed" })
+    });
+
+    assert.equal(report.status, "failed");
+    assert.equal(report.decision, "no-ship");
+    assert.equal(report.score, 70);
   });
 });

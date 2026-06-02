@@ -23,6 +23,7 @@
     "src/",
     "docs/browser-smoke.md",
     "docs/configuration.md",
+    "docs/monorepo.md",
     "docs/security-lite.md",
     "docs/report-schema.md",
     "docs/live-github-verification.md"

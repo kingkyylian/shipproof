@@ -146,6 +146,34 @@ describe("createBrowserSmokePlan", () => {
     });
   });
 
+  it("builds package-local dev commands for workspace browser smoke", () => {
+    const plan = createBrowserSmokePlan({
+      packageJson: {
+        scripts: { dev: "vite --host 0.0.0.0" },
+        devDependencies: { vite: "6.0.0" }
+      },
+      changedFiles: ["apps/web/src/App.tsx"],
+      packageRoot: "apps/web",
+      workspaceName: "web",
+      packageManager: "pnpm"
+    });
+
+    assert.deepEqual(plan, {
+      framework: "vite",
+      devCommand: "pnpm --filter web dev -- --host 127.0.0.1 --port 4173",
+      baseUrl: "http://127.0.0.1:4173",
+      routes: ["/"],
+      screenshotDir: "shipproof-screenshots",
+      logDir: "shipproof-browser-logs",
+      readyUrl: "http://127.0.0.1:4173",
+      timeoutMs: 30000,
+      waitUntil: "networkidle",
+      packageRoot: "apps/web",
+      workspaceName: "web",
+      packageManager: "pnpm"
+    });
+  });
+
   it("returns null when no frontend framework can be detected", () => {
     assert.equal(createBrowserSmokePlan({ packageJson: { scripts: { test: "node --test" } }, changedFiles: [] }), null);
   });
@@ -363,6 +391,43 @@ describe("checkRoutesWithPlaywright", () => {
       waitUntil: "domcontentloaded",
       timeout: 9000
     });
+  });
+
+  it("loads Playwright from the owning workspace package", async () => {
+    let loadedFrom = null;
+    const page = {
+      on: () => {},
+      goto: async () => {},
+      screenshot: async () => {},
+      close: async () => {}
+    };
+    const browser = {
+      newPage: async () => page,
+      close: async () => {}
+    };
+
+    await checkRoutesWithPlaywright(
+      {
+        framework: "vite",
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/"],
+        screenshotDir: "shipproof-screenshots",
+        packageRoot: "apps/web"
+      },
+      {
+        projectDir: process.cwd(),
+        loadPlaywrightImpl: async (projectDir) => {
+          loadedFrom = projectDir;
+          return {
+            chromium: {
+              launch: async () => browser
+            }
+          };
+        }
+      }
+    );
+
+    assert.equal(loadedFrom, `${process.cwd()}/apps/web`);
   });
 });
 
