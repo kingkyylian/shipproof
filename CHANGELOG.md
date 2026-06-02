@@ -11,6 +11,7 @@ The format follows Keep a Changelog style categories, and this project uses sema
 - Agent feedback prompts for `review` and `no-ship` reports.
 - Browser smoke server logs, readiness controls, route timeouts, and advisory missing-Playwright handling.
 - Security-lite line numbers, redacted snippets, allowlist policy, and SARIF output.
+- Monorepo workspace detection with package-local proof commands and workspace browser smoke planning.
 
 ## 0.1.0 - 2026-06-01
 

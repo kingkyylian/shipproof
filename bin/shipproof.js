@@ -11,6 +11,7 @@ import { loadShipProofConfig } from "../src/config.js";
 import { runProof } from "../src/core.js";
 import { createGitHubRequest } from "../src/github.js";
 import { createSecuritySarif, scanSecurityFindingsFromDisk } from "../src/security.js";
+import { loadWorkspaceContext } from "../src/workspace.js";
 
 const cwd = process.cwd();
 const args = process.argv.slice(2);
@@ -73,12 +74,14 @@ async function runLocalMode(values) {
   const packageJson = await readPackageJson(cwd);
   const config = await readConfig(values);
   const changedFiles = parseChangedFiles(values) ?? readChangedFilesFromGit(cwd);
-  const browserPlan = createCliBrowserPlan({ packageJson, changedFiles, values, config });
+  const workspaceContext = await loadWorkspaceContext({ cwd, packageJson, changedFiles, readFile });
+  const browserPlan = createCliBrowserPlan({ packageJson, changedFiles, values, config, workspaceContext });
 
   const report = await runProof({
     packageJson,
     changedFiles,
     config,
+    workspaceContext,
     executeCommand: (command) => executeCommand(command, cwd),
     securityScan: ({ securityConfig } = {}) => scanSecurityFindingsFromDisk({ changedFiles, cwd, config: securityConfig }),
     browserSmoke: browserPlan ? () => runBrowserSmoke({ plan: browserPlan }) : null
@@ -114,8 +117,10 @@ async function runGitHubMode(values) {
     env: process.env,
     config,
     changedFiles: changedOverride,
+    loadWorkspace: ({ changedFiles }) => loadWorkspaceContext({ cwd, packageJson, changedFiles, readFile }),
     executeCommand: (command) => executeCommand(command, cwd),
-    securityScan: ({ changedFiles } = {}) => scanSecurityFindingsFromDisk({ changedFiles: changedFiles ?? changedOverride ?? [], cwd }),
+    securityScan: ({ changedFiles, securityConfig } = {}) =>
+      scanSecurityFindingsFromDisk({ changedFiles: changedFiles ?? changedOverride ?? [], cwd, config: securityConfig }),
     request,
     writeReport: writeReportFile,
     writeJsonReport: writeJsonReportFile,
@@ -160,25 +165,46 @@ function parseChangedFiles(values) {
   return changed.length > 0 ? changed : null;
 }
 
-function createCliBrowserPlan({ packageJson, changedFiles, values, config }) {
+function createCliBrowserPlan({ packageJson, changedFiles, values, config, workspaceContext }) {
   const browserConfig = config.browser;
 
   if (values.includes("--no-browser") || process.env.SHIPPROOF_BROWSER_SMOKE === "false" || browserConfig.enabled === false) {
     return null;
   }
 
+  const planConfig = {
+    ...browserConfig,
+    logDir: readOption(values, "--browser-log-dir") || process.env.SHIPPROOF_BROWSER_LOG_DIR || browserConfig.logDir,
+    readyUrl: readOption(values, "--browser-ready-url") || process.env.SHIPPROOF_BROWSER_READY_URL || browserConfig.readyUrl,
+    timeoutMs: readNumberOption(values, "--browser-timeout-ms") ?? readNumber(process.env.SHIPPROOF_BROWSER_TIMEOUT_MS) ?? browserConfig.timeoutMs,
+    waitUntil: readOption(values, "--browser-wait-until") || process.env.SHIPPROOF_BROWSER_WAIT_UNTIL || browserConfig.waitUntil
+  };
+  const baseUrl = readOption(values, "--browser-base-url") || process.env.SHIPPROOF_BROWSER_BASE_URL || browserConfig.baseUrl || undefined;
+  const screenshotDir = readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || browserConfig.screenshotDir;
+
+  for (const workspacePackage of workspaceContext?.changedPackages ?? []) {
+    const workspacePlan = createBrowserSmokePlan({
+      packageJson: workspacePackage.packageJson,
+      changedFiles,
+      baseUrl,
+      screenshotDir,
+      config: planConfig,
+      packageRoot: workspacePackage.root,
+      workspaceName: workspacePackage.name,
+      packageManager: workspaceContext.packageManager
+    });
+
+    if (workspacePlan) {
+      return workspacePlan;
+    }
+  }
+
   return createBrowserSmokePlan({
     packageJson,
     changedFiles,
-    baseUrl: readOption(values, "--browser-base-url") || process.env.SHIPPROOF_BROWSER_BASE_URL || browserConfig.baseUrl || undefined,
-    screenshotDir: readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || browserConfig.screenshotDir,
-    config: {
-      ...browserConfig,
-      logDir: readOption(values, "--browser-log-dir") || process.env.SHIPPROOF_BROWSER_LOG_DIR || browserConfig.logDir,
-      readyUrl: readOption(values, "--browser-ready-url") || process.env.SHIPPROOF_BROWSER_READY_URL || browserConfig.readyUrl,
-      timeoutMs: readNumberOption(values, "--browser-timeout-ms") ?? readNumber(process.env.SHIPPROOF_BROWSER_TIMEOUT_MS) ?? browserConfig.timeoutMs,
-      waitUntil: readOption(values, "--browser-wait-until") || process.env.SHIPPROOF_BROWSER_WAIT_UNTIL || browserConfig.waitUntil
-    }
+    baseUrl,
+    screenshotDir,
+    config: planConfig
   });
 }
 

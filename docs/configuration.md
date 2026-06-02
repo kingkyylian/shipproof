@@ -36,6 +36,10 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
       }
     ]
   },
+  "workspace": {
+    "enabled": true,
+    "includeRoot": false
+  },
   "score": {
     "ship": 80,
     "review": 60
@@ -81,6 +85,8 @@ Action inputs still override CI-specific values such as report paths, SARIF path
 - `browser.waitUntil`: controls Playwright route navigation readiness.
 - `security.enabled`: disables security-lite checks when `false`.
 - `security.allow`: suppresses intentional findings when `id`, `file`, optional `line`, `reason`, and non-expired `expiresAt` match.
+- `workspace.enabled`: disables workspace targeting when `false`.
+- `workspace.includeRoot`: runs root checks in addition to changed workspace package checks.
 - `score.ship`: minimum score for `ship`.
 - `score.review`: minimum score before `no-ship`.
 - `reports.markdown`: default Markdown artifact path in GitHub mode.

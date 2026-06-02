@@ -20,6 +20,10 @@ export const DEFAULT_SHIPPROOF_CONFIG = {
     enabled: true,
     allow: []
   },
+  workspace: {
+    enabled: true,
+    includeRoot: false
+  },
   score: {
     ship: 80,
     review: 60
@@ -50,6 +54,10 @@ export function resolveShipProofConfig(config = {}) {
       allow: Array.isArray(config.security?.allow)
         ? config.security.allow
         : DEFAULT_SHIPPROOF_CONFIG.security.allow
+    },
+    workspace: {
+      ...DEFAULT_SHIPPROOF_CONFIG.workspace,
+      ...(config.workspace ?? {})
     },
     score: {
       ...DEFAULT_SHIPPROOF_CONFIG.score,

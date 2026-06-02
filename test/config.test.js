@@ -27,6 +27,10 @@ describe("resolveShipProofConfig", () => {
         enabled: true,
         allow: []
       },
+      workspace: {
+        enabled: true,
+        includeRoot: false
+      },
       score: {
         ship: 80,
         review: 60
@@ -71,6 +75,10 @@ describe("resolveShipProofConfig", () => {
         security: {
           enabled: true,
           allow: []
+        },
+        workspace: {
+          enabled: true,
+          includeRoot: false
         },
         score: {
           ship: 90,
