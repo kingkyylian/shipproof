@@ -21,6 +21,10 @@ inputs:
     description: Path where the JSON report payload should be written for artifact upload.
     required: false
     default: shipproof-report.json
+  security-sarif-path:
+    description: Path where SARIF security-lite results should be written for artifact upload.
+    required: false
+    default: shipproof-security.sarif
   browser-smoke:
     description: Whether to run browser smoke checks when ShipProof detects a supported frontend.
     required: false
@@ -66,6 +70,7 @@ runs:
         INPUT_REPORT_PATH: ${{ inputs.report-path }}
         INPUT_CONFIG_PATH: ${{ inputs.config-path }}
         INPUT_JSON_REPORT_PATH: ${{ inputs.json-report-path }}
+        INPUT_SECURITY_SARIF_PATH: ${{ inputs.security-sarif-path }}
         INPUT_BROWSER_SMOKE: ${{ inputs.browser-smoke }}
         INPUT_BROWSER_BASE_URL: ${{ inputs.browser-base-url }}
         INPUT_BROWSER_READY_URL: ${{ inputs.browser-ready-url }}

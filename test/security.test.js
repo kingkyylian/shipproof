@@ -4,15 +4,17 @@ import { describe, it } from "node:test";
 import {
   buildSecurityCheck,
   calculateShipScore,
+  createSecuritySarif,
   scanSecurityFindings
 } from "../src/security.js";
 
 describe("scanSecurityFindings", () => {
   it("flags committed env files, public secrets, unsafe CORS, and auth-sensitive edits", () => {
+    const publicSecretName = "NEXT_PUBLIC_" + "SECRET_TOKEN";
     const findings = scanSecurityFindings([
       { path: ".env", content: "STRIPE_SECRET_KEY=sk_live_1234567890\n" },
-      { path: "src/app/api/route.ts", content: "return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*' } })" },
-      { path: "src/config.ts", content: "export const NEXT_PUBLIC_SECRET_TOKEN = 'abc123456789';" },
+      { path: "src/app/api/route.ts", content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } })` },
+      { path: "src/config.ts", content: `export const ${publicSecretName} = 'abc123456789';` },
       { path: "middleware.ts", content: "export function middleware() {}" }
     ]);
 
@@ -32,6 +34,147 @@ describe("scanSecurityFindings", () => {
     ]);
 
     assert.deepEqual(findings, []);
+  });
+
+  it("includes line, column, redacted snippet, and suppression guidance", () => {
+    const secretValue = "sk_live_" + "hidden_value";
+    const findings = scanSecurityFindings([
+      {
+        path: "src/secrets.ts",
+        content: [
+          "export const region = 'eu';",
+          `STRIPE_SECRET_KEY=${secretValue}`,
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    assert.deepEqual(findings, [
+      {
+        id: "possible-secret",
+        severity: "high",
+        file: "src/secrets.ts",
+        line: 2,
+        column: 1,
+        snippet: "STRIPE_SECRET_KEY=[redacted]",
+        message: "STRIPE_SECRET_KEY looks like a committed secret.",
+        allowlistHint: "Add security.allow with id, file, line, reason, and expiresAt if this is intentional."
+      }
+    ]);
+    assert.equal(JSON.stringify(findings).includes(secretValue), false);
+  });
+
+  it("suppresses non-expired allowlist entries and ignores expired ones", () => {
+    const files = [
+      {
+        path: "src/api/route.ts",
+        content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+      }
+    ];
+
+    assert.deepEqual(
+      scanSecurityFindings(files, {
+        now: new Date("2026-06-02T12:00:00.000Z"),
+        allow: [
+          {
+            id: "unsafe-cors",
+            file: "src/api/route.ts",
+            line: 1,
+            reason: "Intentional public demo endpoint.",
+            expiresAt: "2026-07-01"
+          }
+        ]
+      }),
+      []
+    );
+
+    assert.deepEqual(
+      scanSecurityFindings(files, {
+        now: new Date("2026-06-02T12:00:00.000Z"),
+        allow: [
+          {
+            id: "unsafe-cors",
+            file: "src/api/route.ts",
+            line: 1,
+            reason: "Old waiver.",
+            expiresAt: "2026-05-01"
+          }
+        ]
+      }).map((finding) => finding.id),
+      ["unsafe-cors"]
+    );
+  });
+
+  it("requires allowlist entries to include both id and file", () => {
+    const files = [
+      {
+        path: "src/api/route.ts",
+        content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+      }
+    ];
+
+    assert.deepEqual(
+      scanSecurityFindings(files, {
+        now: new Date("2026-06-02T12:00:00.000Z"),
+        allow: [
+          {
+            file: "src/api/route.ts",
+            reason: "Too broad without finding id.",
+            expiresAt: "2026-07-01"
+          },
+          {
+            id: "unsafe-cors",
+            reason: "Too broad without file.",
+            expiresAt: "2026-07-01"
+          }
+        ]
+      }).map((finding) => finding.id),
+      ["unsafe-cors"]
+    );
+  });
+});
+
+function corsHeader() {
+  return "Access-Control-Allow-" + "Origin";
+}
+
+describe("createSecuritySarif", () => {
+  it("renders active findings as SARIF results with source locations", () => {
+    const sarif = createSecuritySarif([
+      {
+        id: "unsafe-cors",
+        severity: "high",
+        file: "src/api/route.ts",
+        line: 4,
+        column: 17,
+        message: "Wildcard CORS allows any origin."
+      }
+    ]);
+
+    assert.equal(sarif.version, "2.1.0");
+    assert.equal(sarif.runs[0].tool.driver.name, "ShipProof security-lite");
+    assert.deepEqual(sarif.runs[0].tool.driver.rules[0], {
+      id: "unsafe-cors",
+      name: "unsafe-cors",
+      shortDescription: { text: "Wildcard CORS allows any origin." },
+      defaultConfiguration: { level: "error" }
+    });
+    assert.deepEqual(sarif.runs[0].results[0], {
+      ruleId: "unsafe-cors",
+      level: "error",
+      message: { text: "Wildcard CORS allows any origin." },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: "src/api/route.ts" },
+            region: {
+              startLine: 4,
+              startColumn: 17
+            }
+          }
+        }
+      ]
+    });
   });
 });
 

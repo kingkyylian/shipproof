@@ -1,0 +1,73 @@
+# Security-Lite
+
+Security-lite is a cheap production-readiness gate for common AI-code mistakes. It is not a full SAST scanner.
+
+## Findings
+
+ShipProof currently checks for:
+
+- committed runtime `.env` files
+- likely committed secrets in assignment-style config
+- public client variables that include secret/token/private-key names
+- wildcard CORS
+- auth-sensitive path changes
+
+Each finding includes:
+
+- `id`
+- `severity`
+- `file`
+- `line` and `column` when available
+- redacted `snippet` when source context is safe to show
+- `message`
+- `allowlistHint`
+
+Secret values are redacted in snippets and are not copied into messages.
+
+## Allowlist
+
+Use `security.allow` only for intentional exceptions. Each entry should include a reason and expiry.
+
+```json
+{
+  "security": {
+    "allow": [
+      {
+        "id": "unsafe-cors",
+        "file": "src/api/public-demo/route.ts",
+        "line": 12,
+        "reason": "Public demo endpoint without credentials.",
+        "expiresAt": "2026-07-01"
+      }
+    ]
+  }
+}
+```
+
+Allowlist matching supports:
+
+- exact `id`
+- exact `file`
+- optional exact `line`
+- `*` wildcards in `id` and `file`
+
+Expired entries and entries without `reason` do not suppress findings.
+
+## SARIF
+
+GitHub Action mode writes SARIF security-lite results to `shipproof-security.sarif` by default. Override it with:
+
+```yaml
+- uses: kingkyylian/shipproof@v0.1.0
+  with:
+    github-token: ${{ github.token }}
+    security-sarif-path: artifacts/shipproof-security.sarif
+```
+
+Local mode writes SARIF only when requested:
+
+```sh
+npm run shipproof -- --changed src/api/route.ts --no-browser --security-sarif-path /tmp/shipproof-security.sarif
+```
+
+The SARIF file uses SARIF `2.1.0` and maps high findings to `error`, medium findings to `warning`, and low findings to `note`.

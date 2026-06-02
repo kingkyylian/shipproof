@@ -10,6 +10,7 @@ The format follows Keep a Changelog style categories, and this project uses sema
 
 - Agent feedback prompts for `review` and `no-ship` reports.
 - Browser smoke server logs, readiness controls, route timeouts, and advisory missing-Playwright handling.
+- Security-lite line numbers, redacted snippets, allowlist policy, and SARIF output.
 
 ## 0.1.0 - 2026-06-01
 

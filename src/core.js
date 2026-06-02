@@ -170,7 +170,7 @@ export async function runProof({ packageJson, changedFiles, generatedAt, config,
   }
 
   if (resolvedConfig.security.enabled !== false && securityScan) {
-    securityFindings = await securityScan();
+    securityFindings = await securityScan({ securityConfig: resolvedConfig.security });
     const securityCheck = buildSecurityCheck(securityFindings);
     checkResults.push(securityCheck);
 
@@ -264,11 +264,11 @@ export function renderProofReport({
   }
 
   if (securityFindings.length > 0) {
-    lines.push("", "## Security Findings", "", "| Finding | Severity | File | Message |", "| --- | --- | --- | --- |");
+    lines.push("", "## Security Findings", "", "| Finding | Severity | Location | Message | Snippet |", "| --- | --- | --- | --- | --- |");
 
     for (const finding of securityFindings) {
       lines.push(
-        `| ${finding.id} | ${finding.severity} | \`${finding.file}\` | ${escapeTableCell(finding.message)} |`
+        `| ${finding.id} | ${finding.severity} | \`${formatSecurityLocation(finding)}\` | ${escapeTableCell(finding.message)} | ${escapeTableCell(finding.snippet ?? "")} |`
       );
     }
   }
@@ -313,6 +313,14 @@ function formatDuration(durationMs) {
   }
 
   return `${(durationMs / 1000).toFixed(1)}s`;
+}
+
+function formatSecurityLocation(finding) {
+  if (!finding.line) {
+    return finding.file;
+  }
+
+  return `${finding.file}:${finding.line}`;
 }
 
 function escapeTableCell(value) {

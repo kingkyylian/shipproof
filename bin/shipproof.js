@@ -10,7 +10,7 @@ import { createBrowserSmokePlan, runBrowserSmoke } from "../src/browser.js";
 import { loadShipProofConfig } from "../src/config.js";
 import { runProof } from "../src/core.js";
 import { createGitHubRequest } from "../src/github.js";
-import { scanSecurityFindingsFromDisk } from "../src/security.js";
+import { createSecuritySarif, scanSecurityFindingsFromDisk } from "../src/security.js";
 
 const cwd = process.cwd();
 const args = process.argv.slice(2);
@@ -33,6 +33,7 @@ if (args.includes("--help") || args.includes("-h")) {
     "  --browser-log-dir <path>  Directory for dev server stdout/stderr logs.",
     "  --screenshot-dir <path>   Screenshot output directory. Default: shipproof-screenshots.",
     "  --json-report-path <path> Write the full JSON report payload to a file.",
+    "  --security-sarif-path <path> Write SARIF security-lite results to a file.",
     "  --agent-prompt            Print only the agent feedback prompt when one is needed."
   ].join("\n"));
   process.exit(0);
@@ -79,13 +80,18 @@ async function runLocalMode(values) {
     changedFiles,
     config,
     executeCommand: (command) => executeCommand(command, cwd),
-    securityScan: () => scanSecurityFindingsFromDisk({ changedFiles, cwd }),
+    securityScan: ({ securityConfig } = {}) => scanSecurityFindingsFromDisk({ changedFiles, cwd, config: securityConfig }),
     browserSmoke: browserPlan ? () => runBrowserSmoke({ plan: browserPlan }) : null
   });
   const jsonReportPath = readOption(values, "--json-report-path") || process.env.SHIPPROOF_JSON_REPORT_PATH;
+  const securitySarifPath = readOption(values, "--security-sarif-path") || process.env.SHIPPROOF_SECURITY_SARIF_PATH;
 
   if (jsonReportPath) {
     await writeJsonReportFile(jsonReportPath, report);
+  }
+
+  if (securitySarifPath) {
+    await writeJsonReportFile(securitySarifPath, createSecuritySarif(report.securityFindings));
   }
 
   return report;
@@ -113,6 +119,7 @@ async function runGitHubMode(values) {
     request,
     writeReport: writeReportFile,
     writeJsonReport: writeJsonReportFile,
+    writeSecuritySarif: writeJsonReportFile,
     appendSummary: process.env.GITHUB_STEP_SUMMARY
       ? (markdown) => appendFile(process.env.GITHUB_STEP_SUMMARY, markdown)
       : null

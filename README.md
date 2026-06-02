@@ -13,6 +13,7 @@ ShipProof is a verification layer for AI-generated code. It does not write code 
 - Produces a `ship`, `review`, or `no-ship` decision with a 0-100 score.
 - Prints a Markdown report suitable for a GitHub PR comment.
 - Writes a JSON report payload with `schemaVersion: "1.0"` in GitHub mode.
+- Writes SARIF security-lite results in GitHub mode.
 - Generates a focused agent feedback prompt for `review` and `no-ship` reports.
 
 ## Usage
@@ -23,6 +24,7 @@ npm run smoke:github-mock
 npm run shipproof -- --changed src/core.js,test/core.test.js
 npm run shipproof -- --changed src/app/login/page.tsx --browser-base-url http://127.0.0.1:3000
 npm run shipproof -- --changed src/core.js --config shipproof.config.json --json-report-path /tmp/shipproof-report.json
+npm run shipproof -- --changed src/api/route.ts --security-sarif-path /tmp/shipproof-security.sarif
 npm run shipproof -- --changed src/api/route.ts --agent-prompt
 ```
 
@@ -58,6 +60,7 @@ jobs:
           github-token: ${{ github.token }}
           report-path: shipproof-report.md
           json-report-path: shipproof-report.json
+          security-sarif-path: shipproof-security.sarif
           screenshot-dir: shipproof-screenshots
           browser-log-dir: shipproof-browser-logs
 
@@ -78,6 +81,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: shipproof-security-sarif
+          path: shipproof-security.sarif
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
           name: shipproof-screenshots
           path: shipproof-screenshots
           if-no-files-found: ignore
@@ -93,7 +103,7 @@ Browser smoke checks run automatically for detected Next.js and Vite projects wh
 
 Browser smoke writes route screenshots and, when ShipProof starts the dev server, stdout/stderr logs. See `docs/browser-smoke.md`.
 
-Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision.
+Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision. Findings include line numbers when available, redacted snippets, allowlist guidance, and SARIF output. See `docs/security-lite.md`.
 
 Configuration is optional. Add `shipproof.config.json` when a repository needs explicit browser routes, advisory browser smoke, disabled security-lite, custom score thresholds, or custom report paths. See `docs/configuration.md` and `docs/report-schema.md`.
 

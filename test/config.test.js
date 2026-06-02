@@ -33,7 +33,8 @@ describe("resolveShipProofConfig", () => {
       },
       reports: {
         markdown: "shipproof-report.md",
-        json: "shipproof-report.json"
+        json: "shipproof-report.json",
+        sarif: "shipproof-security.sarif"
       }
     });
   });
@@ -77,7 +78,8 @@ describe("resolveShipProofConfig", () => {
         },
         reports: {
           markdown: "shipproof-report.md",
-          json: "shipproof-report.json"
+          json: "shipproof-report.json",
+          sarif: "shipproof-security.sarif"
         }
       }
     );
@@ -92,13 +94,14 @@ describe("loadShipProofConfig", () => {
         assert.equal(file, "shipproof.config.json");
         return JSON.stringify({
           security: { enabled: false },
-          reports: { json: "artifacts/proof.json" }
+          reports: { json: "artifacts/proof.json", sarif: "artifacts/security.sarif" }
         });
       }
     });
 
     assert.equal(config.security.enabled, false);
     assert.equal(config.reports.json, "artifacts/proof.json");
+    assert.equal(config.reports.sarif, "artifacts/security.sarif");
     assert.equal(config.browser.enabled, true);
   });
 });

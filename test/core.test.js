@@ -124,6 +124,9 @@ describe("renderProofReport", () => {
           id: "unsafe-cors",
           severity: "high",
           file: "src/api/route.ts",
+          line: 4,
+          column: 17,
+          snippet: "Wildcard CORS header allows any origin.",
           message: "Wildcard CORS allows any origin."
         }
       ],
@@ -133,6 +136,8 @@ describe("renderProofReport", () => {
     assert.match(markdown, /\*\*Decision:\*\* no-ship/);
     assert.match(markdown, /\*\*Score:\*\* 20\/100/);
     assert.match(markdown, /## Security Findings/);
+    assert.match(markdown, /src\/api\/route\.ts:4/);
+    assert.match(markdown, /Wildcard CORS header allows any origin/);
     assert.match(markdown, /Wildcard CORS allows any origin/);
   });
 });
@@ -392,5 +397,50 @@ describe("runProof", () => {
     assert.equal(securityRan, false);
     assert.deepEqual(report.checks.map((check) => check.name), ["test"]);
     assert.equal(report.status, "passed");
+  });
+
+  it("passes resolved security policy to the security scanner", async () => {
+    let receivedSecurityConfig = null;
+
+    await runProof({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["src/api/route.ts"],
+      generatedAt: "2026-06-02T12:00:00.000Z",
+      config: {
+        security: {
+          allow: [
+            {
+              id: "unsafe-cors",
+              file: "src/api/route.ts",
+              line: 1,
+              reason: "Intentional public endpoint.",
+              expiresAt: "2026-07-01"
+            }
+          ]
+        }
+      },
+      executeCommand: async () => ({ exitCode: 0, durationMs: 50, stdout: "ok" }),
+      securityScan: async ({ securityConfig }) => {
+        receivedSecurityConfig = securityConfig;
+        return [];
+      }
+    });
+
+    assert.deepEqual(receivedSecurityConfig, {
+      enabled: true,
+      allow: [
+        {
+          id: "unsafe-cors",
+          file: "src/api/route.ts",
+          line: 1,
+          reason: "Intentional public endpoint.",
+          expiresAt: "2026-07-01"
+        }
+      ]
+    });
   });
 });
