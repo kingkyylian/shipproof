@@ -84,12 +84,17 @@ Each finding has:
   "line": 4,
   "column": 17,
   "snippet": "Wildcard CORS header allows any origin.",
+  "status": "baseline",
+  "baselineReason": "Legacy endpoint tracked until rewrite.",
+  "baselineExpiresAt": "2026-08-01",
   "allowlistHint": "Add security.allow with id, file, line, reason, and expiresAt if this is intentional.",
   "message": "Wildcard CORS allows any origin."
 }
 ```
 
 `line`, `column`, and `snippet` are included when source context is available. Secret snippets are redacted.
+
+`status`, `baselineReason`, and `baselineExpiresAt` are included only for findings matched by `security.baseline`. Baseline findings remain visible in reports but do not affect `security-lite` pass/fail, ship score, or SARIF output.
 
 ## SARIF
 

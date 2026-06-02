@@ -34,6 +34,15 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
         "reason": "Public demo endpoint without credentials.",
         "expiresAt": "2026-07-01"
       }
+    ],
+    "baseline": [
+      {
+        "id": "unsafe-cors",
+        "file": "src/api/legacy/route.ts",
+        "line": 4,
+        "reason": "Known legacy endpoint tracked until rewrite.",
+        "expiresAt": "2026-08-01"
+      }
     ]
   },
   "workspace": {
@@ -85,6 +94,7 @@ Action inputs still override CI-specific values such as report paths, SARIF path
 - `browser.waitUntil`: controls Playwright route navigation readiness.
 - `security.enabled`: disables security-lite checks when `false`.
 - `security.allow`: suppresses intentional findings when `id`, `file`, optional `line`, `reason`, and non-expired `expiresAt` match.
+- `security.baseline`: marks known existing findings as non-blocking while keeping them visible in reports; expired entries become active findings again.
 - `workspace.enabled`: disables workspace targeting when `false`.
 - `workspace.includeRoot`: runs root checks in addition to changed workspace package checks.
 - `score.ship`: minimum score for `ship`.

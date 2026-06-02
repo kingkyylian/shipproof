@@ -25,7 +25,8 @@ describe("resolveShipProofConfig", () => {
       },
       security: {
         enabled: true,
-        allow: []
+        allow: [],
+        baseline: []
       },
       workspace: {
         enabled: true,
@@ -74,7 +75,8 @@ describe("resolveShipProofConfig", () => {
         },
         security: {
           enabled: true,
-          allow: []
+          allow: [],
+          baseline: []
         },
         workspace: {
           enabled: true,
@@ -111,5 +113,31 @@ describe("loadShipProofConfig", () => {
     assert.equal(config.reports.json, "artifacts/proof.json");
     assert.equal(config.reports.sarif, "artifacts/security.sarif");
     assert.equal(config.browser.enabled, true);
+  });
+
+  it("keeps configured security baseline entries", () => {
+    const config = resolveShipProofConfig({
+      security: {
+        baseline: [
+          {
+            id: "unsafe-cors",
+            file: "src/api/legacy/route.ts",
+            line: 1,
+            reason: "Legacy endpoint tracked until rewrite.",
+            expiresAt: "2026-07-01"
+          }
+        ]
+      }
+    });
+
+    assert.deepEqual(config.security.baseline, [
+      {
+        id: "unsafe-cors",
+        file: "src/api/legacy/route.ts",
+        line: 1,
+        reason: "Legacy endpoint tracked until rewrite.",
+        expiresAt: "2026-07-01"
+      }
+    ]);
   });
 });

@@ -18,6 +18,7 @@ const SARIF_LEVEL_BY_SEVERITY = {
 export function scanSecurityFindings(files, config = {}) {
   const findings = [];
   const allow = Array.isArray(config.allow) ? config.allow : [];
+  const baseline = Array.isArray(config.baseline) ? config.baseline : [];
   const now = toDate(config.now) ?? new Date();
 
   for (const file of files) {
@@ -52,7 +53,9 @@ export function scanSecurityFindings(files, config = {}) {
     }
   }
 
-  return findings.filter((finding) => !isAllowlisted(finding, allow, now));
+  return findings
+    .filter((finding) => !isAllowlisted(finding, allow, now))
+    .map((finding) => withBaselineStatus(finding, baseline, now));
 }
 
 export async function scanSecurityFindingsFromDisk({ changedFiles, cwd = process.cwd(), config } = {}) {
@@ -71,8 +74,10 @@ export async function scanSecurityFindingsFromDisk({ changedFiles, cwd = process
 }
 
 export function buildSecurityCheck(findings) {
-  const highCount = findings.filter((finding) => finding.severity === "high").length;
-  const mediumCount = findings.filter((finding) => finding.severity === "medium").length;
+  const activeFindings = findings.filter(isActiveFinding);
+  const baselineCount = findings.length - activeFindings.length;
+  const highCount = activeFindings.filter((finding) => finding.severity === "high").length;
+  const mediumCount = activeFindings.filter((finding) => finding.severity === "medium").length;
 
   if (highCount > 0) {
     return {
@@ -94,6 +99,16 @@ export function buildSecurityCheck(findings) {
     };
   }
 
+  if (baselineCount > 0) {
+    return {
+      name: "security-lite",
+      command: "shipproof security-lite",
+      status: "passed",
+      summary: `No active security-lite findings; ${baselineCount} baseline ${baselineCount === 1 ? "finding" : "findings"}`,
+      required: true
+    };
+  }
+
   return {
     name: "security-lite",
     command: "shipproof security-lite",
@@ -108,8 +123,9 @@ export function calculateShipScore({ status, checks, risks, securityFindings, th
   const uncheckedRequiredChecks = checks.filter((check) => check.required === true && check.status === "not_checked").length;
   const highRisks = risks.filter((risk) => risk.severity === "high").length;
   const mediumRisks = risks.filter((risk) => risk.severity === "medium").length;
-  const highSecurity = securityFindings.filter((finding) => finding.severity === "high").length;
-  const mediumSecurity = securityFindings.filter((finding) => finding.severity === "medium").length;
+  const activeSecurityFindings = securityFindings.filter(isActiveFinding);
+  const highSecurity = activeSecurityFindings.filter((finding) => finding.severity === "high").length;
+  const mediumSecurity = activeSecurityFindings.filter((finding) => finding.severity === "medium").length;
   const score = Math.max(
     0,
     100 -
@@ -128,9 +144,10 @@ export function calculateShipScore({ status, checks, risks, securityFindings, th
 }
 
 export function createSecuritySarif(findings = []) {
+  const activeFindings = findings.filter(isActiveFinding);
   const rulesById = new Map();
 
-  for (const finding of findings) {
+  for (const finding of activeFindings) {
     if (!rulesById.has(finding.id)) {
       rulesById.set(finding.id, {
         id: finding.id,
@@ -153,7 +170,7 @@ export function createSecuritySarif(findings = []) {
             rules: [...rulesById.values()]
           }
         },
-        results: findings.map((finding) => ({
+        results: activeFindings.map((finding) => ({
           ruleId: finding.id,
           level: toSarifLevel(finding.severity),
           message: { text: finding.message },
@@ -268,7 +285,26 @@ function withAllowlistHint(finding) {
 }
 
 function isAllowlisted(finding, allow, now) {
-  return allow.some((entry) => {
+  return Boolean(findMatchingPolicyEntry(finding, allow, now));
+}
+
+function withBaselineStatus(finding, baseline, now) {
+  const entry = findMatchingPolicyEntry(finding, baseline, now);
+
+  if (!entry) {
+    return finding;
+  }
+
+  return {
+    ...finding,
+    status: "baseline",
+    baselineReason: entry.reason,
+    ...(entry.expiresAt ? { baselineExpiresAt: entry.expiresAt } : {})
+  };
+}
+
+function findMatchingPolicyEntry(finding, entries, now) {
+  return entries.find((entry) => {
     if (!entry?.id || !entry?.file || !entry.reason || isExpired(entry.expiresAt, now)) {
       return false;
     }
@@ -283,6 +319,10 @@ function isAllowlisted(finding, allow, now) {
 
     return entry.line === undefined || Number(entry.line) === finding.line;
   });
+}
+
+function isActiveFinding(finding) {
+  return finding.status !== "baseline";
 }
 
 function isExpired(expiresAt, now) {

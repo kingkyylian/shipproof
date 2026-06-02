@@ -53,6 +53,30 @@ Allowlist matching supports:
 
 Expired entries and entries without `reason` do not suppress findings.
 
+## Baseline
+
+Use `security.baseline` for known existing findings that should remain visible without blocking new work.
+
+```json
+{
+  "security": {
+    "baseline": [
+      {
+        "id": "unsafe-cors",
+        "file": "src/api/legacy/route.ts",
+        "line": 12,
+        "reason": "Legacy endpoint tracked until auth rewrite.",
+        "expiresAt": "2026-08-01"
+      }
+    ]
+  }
+}
+```
+
+Baseline matching uses the same `id`, `file`, optional `line`, `reason`, `expiresAt`, and wildcard rules as `security.allow`.
+
+Matched baseline findings stay in Markdown and JSON reports with `status: "baseline"`, but they do not fail `security-lite`, reduce the ship score, or appear in SARIF. Expired baseline entries become active findings again.
+
 ## SARIF
 
 GitHub Action mode writes SARIF security-lite results to `shipproof-security.sarif` by default. Override it with:
