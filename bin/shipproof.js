@@ -8,7 +8,7 @@ import path from "node:path";
 import { runGitHubProof } from "../src/action.js";
 import { createBrowserSmokePlan, runBrowserSmoke } from "../src/browser.js";
 import { loadShipProofConfig } from "../src/config.js";
-import { runProof } from "../src/core.js";
+import { attachReportArtifacts, runProof } from "../src/core.js";
 import { createGitHubRequest } from "../src/github.js";
 import { createSecuritySarif, scanSecurityFindingsFromDisk } from "../src/security.js";
 import { loadWorkspaceContext } from "../src/workspace.js";
@@ -77,7 +77,7 @@ async function runLocalMode(values) {
   const workspaceContext = await loadWorkspaceContext({ cwd, packageJson, changedFiles, readFile });
   const browserPlan = createCliBrowserPlan({ packageJson, changedFiles, values, config, workspaceContext });
 
-  const report = await runProof({
+  let report = await runProof({
     packageJson,
     changedFiles,
     config,
@@ -88,6 +88,13 @@ async function runLocalMode(values) {
   });
   const jsonReportPath = readOption(values, "--json-report-path") || process.env.SHIPPROOF_JSON_REPORT_PATH;
   const securitySarifPath = readOption(values, "--security-sarif-path") || process.env.SHIPPROOF_SECURITY_SARIF_PATH;
+
+  report = attachReportArtifacts(report, {
+    json: jsonReportPath,
+    sarif: securitySarifPath,
+    screenshots: browserPlan?.screenshotDir,
+    browserLogs: browserPlan?.logDir
+  });
 
   if (jsonReportPath) {
     await writeJsonReportFile(jsonReportPath, report);

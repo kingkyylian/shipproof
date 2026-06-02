@@ -21,6 +21,8 @@ ShipProof writes these report artifacts:
   "risks": [],
   "securityFindings": [],
   "suggestedNextTests": [],
+  "rerunCommands": [],
+  "artifacts": {},
   "agentFeedbackPrompt": null,
   "markdown": "# ShipProof Report\n..."
 }
@@ -49,9 +51,12 @@ Each check has:
   "status": "passed",
   "durationMs": 250,
   "summary": "ok",
+  "failureExcerpt": "last relevant failing output lines",
   "required": true
 }
 ```
+
+`failureExcerpt` is included only for failed command checks when stdout or stderr is available. ShipProof keeps it short and redacts likely secret assignment values so PR comments stay readable.
 
 `required` may be omitted for checks whose requirement level comes from project defaults or config.
 
@@ -93,6 +98,26 @@ SARIF output is written separately from the JSON report. Each active security fi
 - `ruleId`: ShipProof finding id.
 - `level`: `error` for high severity, `warning` for medium, `note` for low.
 - `locations`: source file plus line and column when available.
+
+## Rerun Commands
+
+`rerunCommands` contains concrete commands for non-ship or review reports. It includes failed or skipped check commands and a ShipProof rerun command scoped to the changed file list when available.
+
+## Artifacts
+
+`artifacts` is included when ShipProof knows the generated artifact paths:
+
+```json
+{
+  "markdown": "shipproof-report.md",
+  "json": "shipproof-report.json",
+  "sarif": "shipproof-security.sarif",
+  "screenshots": "shipproof-screenshots",
+  "browserLogs": "shipproof-browser-logs"
+}
+```
+
+GitHub Action mode fills these paths before writing the Markdown report, JSON report, PR comment, and step summary. Local mode includes paths only for artifacts requested through CLI flags or produced by browser smoke.
 
 ## Agent Feedback Prompt
 
