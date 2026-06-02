@@ -92,7 +92,11 @@ function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {
   const planConfig = {
     ...browserConfig,
     baseUrl: env.INPUT_BROWSER_BASE_URL || browserConfig.baseUrl || undefined,
-    screenshotDir: env.INPUT_SCREENSHOT_DIR || browserConfig.screenshotDir || "shipproof-screenshots"
+    screenshotDir: env.INPUT_SCREENSHOT_DIR || browserConfig.screenshotDir || "shipproof-screenshots",
+    logDir: env.INPUT_BROWSER_LOG_DIR || browserConfig.logDir || "shipproof-browser-logs",
+    readyUrl: env.INPUT_BROWSER_READY_URL || browserConfig.readyUrl || undefined,
+    timeoutMs: readNumber(env.INPUT_BROWSER_TIMEOUT_MS) ?? browserConfig.timeoutMs,
+    waitUntil: env.INPUT_BROWSER_WAIT_UNTIL || browserConfig.waitUntil
   };
 
   if (planConfig.required === true) {
@@ -106,4 +110,13 @@ function createActionBrowserPlan({ packageJson, changedFiles, env, config }) {
     screenshotDir: planConfig.screenshotDir,
     config: planConfig
   });
+}
+
+function readNumber(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

@@ -156,7 +156,11 @@ describe("runGitHubProof", () => {
         GITHUB_REPOSITORY: "acme/demo",
         INPUT_COMMENT: "false",
         INPUT_BROWSER_BASE_URL: "http://127.0.0.1:3000",
-        INPUT_SCREENSHOT_DIR: "artifacts/screens"
+        INPUT_SCREENSHOT_DIR: "artifacts/screens",
+        INPUT_BROWSER_LOG_DIR: "artifacts/browser-logs",
+        INPUT_BROWSER_READY_URL: "http://127.0.0.1:3000/health",
+        INPUT_BROWSER_TIMEOUT_MS: "9000",
+        INPUT_BROWSER_WAIT_UNTIL: "domcontentloaded"
       },
       changedFiles: ["src/app/login/page.tsx"],
       executeCommand: async () => ({ exitCode: 0, durationMs: 25 }),
@@ -182,7 +186,11 @@ describe("runGitHubProof", () => {
         devCommand: null,
         baseUrl: "http://127.0.0.1:3000",
         routes: ["/login"],
-        screenshotDir: "artifacts/screens"
+        screenshotDir: "artifacts/screens",
+        logDir: "artifacts/browser-logs",
+        readyUrl: "http://127.0.0.1:3000/health",
+        timeoutMs: 9000,
+        waitUntil: "domcontentloaded"
       }
     ]);
     assert.deepEqual(result.report.checks.map((check) => check.name), ["test", "security-lite", "browser-smoke"]);

@@ -18,7 +18,11 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
     "required": true,
     "baseUrl": null,
     "routes": [],
-    "screenshotDir": "shipproof-screenshots"
+    "screenshotDir": "shipproof-screenshots",
+    "logDir": "shipproof-browser-logs",
+    "readyUrl": null,
+    "timeoutMs": 30000,
+    "waitUntil": "networkidle"
   },
   "security": {
     "enabled": true,
@@ -59,7 +63,13 @@ Action inputs still override CI-specific values such as report paths, browser ba
 - `checks.*`: use `"required"` or `"optional"` for discovered package scripts.
 - `browser.enabled`: disables browser smoke planning when `false`.
 - `browser.required`: controls whether browser smoke is a required proof check.
+- `browser.baseUrl`: reuses an already-running dev server when set.
 - `browser.routes`: adds explicit routes to inferred routes.
+- `browser.screenshotDir`: stores route screenshots.
+- `browser.logDir`: stores dev server stdout and stderr logs.
+- `browser.readyUrl`: overrides the URL used for readiness polling.
+- `browser.timeoutMs`: controls readiness and route navigation timeout.
+- `browser.waitUntil`: controls Playwright route navigation readiness.
 - `security.enabled`: disables security-lite checks when `false`.
 - `score.ship`: minimum score for `ship`.
 - `score.review`: minimum score before `no-ship`.

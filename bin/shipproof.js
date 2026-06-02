@@ -27,6 +27,10 @@ if (args.includes("--help") || args.includes("-h")) {
     "  --no-browser              Disable browser smoke checks.",
     "  --config <path>           Read ShipProof configuration from a JSON file.",
     "  --browser-base-url <url>  Reuse an existing dev server instead of starting one.",
+    "  --browser-ready-url <url> Server URL used for readiness polling.",
+    "  --browser-timeout-ms <n>  Browser navigation and readiness timeout in milliseconds.",
+    "  --browser-wait-until <v>  Playwright waitUntil value for route navigation.",
+    "  --browser-log-dir <path>  Directory for dev server stdout/stderr logs.",
     "  --screenshot-dir <path>   Screenshot output directory. Default: shipproof-screenshots.",
     "  --json-report-path <path> Write the full JSON report payload to a file.",
     "  --agent-prompt            Print only the agent feedback prompt when one is needed."
@@ -161,8 +165,29 @@ function createCliBrowserPlan({ packageJson, changedFiles, values, config }) {
     changedFiles,
     baseUrl: readOption(values, "--browser-base-url") || process.env.SHIPPROOF_BROWSER_BASE_URL || browserConfig.baseUrl || undefined,
     screenshotDir: readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || browserConfig.screenshotDir,
-    config: browserConfig
+    config: {
+      ...browserConfig,
+      logDir: readOption(values, "--browser-log-dir") || process.env.SHIPPROOF_BROWSER_LOG_DIR || browserConfig.logDir,
+      readyUrl: readOption(values, "--browser-ready-url") || process.env.SHIPPROOF_BROWSER_READY_URL || browserConfig.readyUrl,
+      timeoutMs: readNumberOption(values, "--browser-timeout-ms") ?? readNumber(process.env.SHIPPROOF_BROWSER_TIMEOUT_MS) ?? browserConfig.timeoutMs,
+      waitUntil: readOption(values, "--browser-wait-until") || process.env.SHIPPROOF_BROWSER_WAIT_UNTIL || browserConfig.waitUntil
+    }
   });
+}
+
+function readNumberOption(values, name) {
+  const value = readOption(values, name);
+
+  return readNumber(value);
+}
+
+function readNumber(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function readOption(values, name) {

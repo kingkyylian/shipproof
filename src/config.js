@@ -10,7 +10,11 @@ export const DEFAULT_SHIPPROOF_CONFIG = {
     required: true,
     baseUrl: null,
     routes: [],
-    screenshotDir: "shipproof-screenshots"
+    screenshotDir: "shipproof-screenshots",
+    logDir: "shipproof-browser-logs",
+    readyUrl: null,
+    timeoutMs: 30000,
+    waitUntil: "networkidle"
   },
   security: {
     enabled: true,

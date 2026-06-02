@@ -29,6 +29,22 @@ inputs:
     description: Existing dev server URL to reuse. If omitted, ShipProof starts the detected dev server.
     required: false
     default: ""
+  browser-ready-url:
+    description: URL used to decide when the dev server is ready.
+    required: false
+    default: ""
+  browser-timeout-ms:
+    description: Browser navigation and readiness timeout in milliseconds.
+    required: false
+    default: ""
+  browser-wait-until:
+    description: Playwright waitUntil value for route navigation.
+    required: false
+    default: ""
+  browser-log-dir:
+    description: Directory for browser dev server stdout and stderr logs.
+    required: false
+    default: shipproof-browser-logs
   screenshot-dir:
     description: Directory for browser smoke screenshots.
     required: false
@@ -52,5 +68,9 @@ runs:
         INPUT_JSON_REPORT_PATH: ${{ inputs.json-report-path }}
         INPUT_BROWSER_SMOKE: ${{ inputs.browser-smoke }}
         INPUT_BROWSER_BASE_URL: ${{ inputs.browser-base-url }}
+        INPUT_BROWSER_READY_URL: ${{ inputs.browser-ready-url }}
+        INPUT_BROWSER_TIMEOUT_MS: ${{ inputs.browser-timeout-ms }}
+        INPUT_BROWSER_WAIT_UNTIL: ${{ inputs.browser-wait-until }}
+        INPUT_BROWSER_LOG_DIR: ${{ inputs.browser-log-dir }}
         INPUT_SCREENSHOT_DIR: ${{ inputs.screenshot-dir }}
         INPUT_GITHUB_API_URL: ${{ inputs.github-api-url }}
