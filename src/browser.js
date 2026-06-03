@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { formatWorkspaceCommand } from "./workspace.js";
+import { formatRootCommand, formatWorkspaceCommand } from "./workspace.js";
 
 const DEFAULT_PORT = 4173;
 const DEFAULT_SCREENSHOT_DIR = "shipproof-screenshots";
@@ -255,7 +255,7 @@ function formatDevCommand({ packageManager, workspaceName }) {
     return formatWorkspaceCommand({ packageManager, workspace: workspaceName, script: "dev" });
   }
 
-  return "npm run dev";
+  return formatRootCommand({ packageManager, script: "dev" });
 }
 
 async function checkRoute({ browser, plan, route, screenshotRoot }) {

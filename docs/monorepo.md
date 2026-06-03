@@ -36,7 +36,7 @@ pnpm --filter web test
 pnpm --filter web build
 ```
 
-Single-package repositories continue to use root commands such as `npm test` and `npm run build`.
+Single-package repositories use detected root commands such as `npm test`, `npm run build`, `pnpm test`, and `pnpm build`.
 
 ## Root Checks
 
@@ -69,3 +69,4 @@ pnpm --filter web dev -- --host 127.0.0.1 --port 4173
 ```
 
 If no changed workspace package owns a browser route, ShipProof falls back to the root browser smoke behavior.
+Root browser smoke also uses the detected package manager for dev commands, for example `pnpm dev -- --host 127.0.0.1 --port 4173`.

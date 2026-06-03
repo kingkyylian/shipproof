@@ -120,6 +120,7 @@ export function buildSecurityCheck(findings) {
 
 export function calculateShipScore({ status, checks, risks, securityFindings, thresholds = { ship: 80, review: 60 } }) {
   const failedRequiredChecks = checks.filter((check) => check.required === true && check.status === "failed").length;
+  const failedOptionalChecks = checks.filter((check) => check.required !== true && check.status === "failed").length;
   const uncheckedRequiredChecks = checks.filter((check) => check.required === true && check.status === "not_checked").length;
   const highRisks = risks.filter((risk) => risk.severity === "high").length;
   const mediumRisks = risks.filter((risk) => risk.severity === "medium").length;
@@ -130,6 +131,7 @@ export function calculateShipScore({ status, checks, risks, securityFindings, th
     0,
     100 -
       failedRequiredChecks * 30 -
+      failedOptionalChecks * 15 -
       uncheckedRequiredChecks * 20 -
       highRisks * 15 -
       mediumRisks * 6 -

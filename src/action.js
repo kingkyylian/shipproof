@@ -145,7 +145,8 @@ function createActionBrowserPlan({ packageJson, changedFiles, env, config, works
     changedFiles,
     baseUrl: planConfig.baseUrl,
     screenshotDir: planConfig.screenshotDir,
-    config: planConfig
+    config: planConfig,
+    packageManager: workspaceContext?.packageManager
   });
 }
 

@@ -101,6 +101,29 @@ describe("discoverProjectCommands", () => {
       ]
     );
   });
+
+  it("uses detected package manager for single-package root commands", () => {
+    assert.deepEqual(
+      discoverProjectCommands(
+        {
+          scripts: {
+            lint: "eslint .",
+            test: "vitest",
+            build: "tsup"
+          }
+        },
+        undefined,
+        {
+          packageManager: "pnpm"
+        }
+      ),
+      [
+        { name: "lint", command: "pnpm lint", required: false },
+        { name: "test", command: "pnpm test", required: true },
+        { name: "build", command: "pnpm build", required: true }
+      ]
+    );
+  });
 });
 
 describe("classifyChangedFiles", () => {
@@ -313,7 +336,7 @@ describe("createProofReport", () => {
     assert.match(report.markdown, /\*\*Status:\*\* failed/);
   });
 
-  it("returns passed status when all required checks pass", () => {
+  it("fails the report when an executed optional check fails", () => {
     const report = createProofReport({
       packageJson: {
         scripts: {
@@ -329,7 +352,13 @@ describe("createProofReport", () => {
       generatedAt: "2026-06-01T15:00:00.000Z"
     });
 
-    assert.equal(report.status, "passed");
+    assert.equal(report.status, "failed");
+    assert.equal(report.decision, "no-ship");
+    assert.ok(report.score < 100);
+    assert.deepEqual(report.rerunCommands, [
+      "npm run lint",
+      "npm run shipproof -- --changed src/lib/math.js"
+    ]);
   });
 
   it("does not pass when a required check was not executed", () => {
@@ -489,6 +518,35 @@ describe("runProof", () => {
       { name: "build", command: "npm run build", status: "not_checked", summary: "Skipped after test failure" }
     ]);
     assert.equal(report.status, "failed");
+  });
+
+  it("continues after an optional check fails but still fails the proof", async () => {
+    const executed = [];
+    const report = await runProof({
+      packageJson: {
+        scripts: {
+          lint: "eslint .",
+          test: "node --test",
+          build: "vite build"
+        }
+      },
+      changedFiles: ["src/app/page.tsx"],
+      generatedAt: "2026-06-02T18:35:00.000Z",
+      executeCommand: async (command) => {
+        executed.push(command);
+
+        if (command === "npm run lint") {
+          return { exitCode: 1, durationMs: 70, stderr: "lint failed" };
+        }
+
+        return { exitCode: 0, durationMs: 50, stdout: "ok" };
+      }
+    });
+
+    assert.deepEqual(executed, ["npm run lint", "npm test", "npm run build"]);
+    assert.equal(report.status, "failed");
+    assert.equal(report.decision, "no-ship");
+    assert.match(report.markdown, /lint failed/);
   });
 
   it("includes a required browser smoke check in the overall proof status", async () => {

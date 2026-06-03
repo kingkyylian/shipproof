@@ -38,6 +38,22 @@ describe("detectFrontendFramework", () => {
       port: 4173
     });
   });
+
+  it("uses the detected package manager for root dev commands", () => {
+    const framework = detectFrontendFramework(
+      {
+        scripts: { dev: "vite" },
+        devDependencies: { vite: "6.0.0" }
+      },
+      { packageManager: "pnpm" }
+    );
+
+    assert.deepEqual(framework, {
+      name: "vite",
+      devCommand: "pnpm dev -- --host 127.0.0.1 --port 4173",
+      port: 4173
+    });
+  });
 });
 
 describe("inferSmokeRoutes", () => {
