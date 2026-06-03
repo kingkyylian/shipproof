@@ -181,6 +181,7 @@ function createCliBrowserPlan({ packageJson, changedFiles, values, config, works
 
   const planConfig = {
     ...browserConfig,
+    screenshotDir: readOption(values, "--screenshot-dir") || process.env.SHIPPROOF_SCREENSHOT_DIR || browserConfig.screenshotDir,
     logDir: readOption(values, "--browser-log-dir") || process.env.SHIPPROOF_BROWSER_LOG_DIR || browserConfig.logDir,
     readyUrl: readOption(values, "--browser-ready-url") || process.env.SHIPPROOF_BROWSER_READY_URL || browserConfig.readyUrl,
     timeoutMs: readNumberOption(values, "--browser-timeout-ms") ?? readNumber(process.env.SHIPPROOF_BROWSER_TIMEOUT_MS) ?? browserConfig.timeoutMs,
@@ -211,7 +212,8 @@ function createCliBrowserPlan({ packageJson, changedFiles, values, config, works
     changedFiles,
     baseUrl,
     screenshotDir,
-    config: planConfig
+    config: planConfig,
+    packageManager: workspaceContext?.packageManager
   });
 }
 

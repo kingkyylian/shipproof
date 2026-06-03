@@ -5,7 +5,8 @@ ShipProof is a verification layer for AI-generated code. It does not write code 
 ## Current MVP
 
 - Discovers `lint`, `test`, `typecheck`, and `build` scripts from `package.json`.
-- Runs checks in a stable order.
+- Runs checks in a stable order with the detected package manager.
+- Marks the proof failed when any executed check fails.
 - Stops after a required check fails and marks later checks as `not_checked`.
 - Classifies changed files into auth, database, payment, backend, config, dependency, and frontend risk buckets.
 - Detects npm and pnpm workspaces and runs relevant package-local checks for changed packages.
@@ -107,6 +108,8 @@ Browser smoke checks run automatically for detected Next.js and Vite projects wh
 Browser smoke writes route screenshots and, when ShipProof starts the dev server, stdout/stderr logs. See `docs/browser-smoke.md`.
 
 Monorepo support detects npm and pnpm workspaces, maps changed files to package roots, and runs package-local checks such as `npm --workspace web test` or `pnpm --filter web test`. See `docs/monorepo.md`.
+
+Single-package repositories also use the detected lockfile package manager for root checks and browser dev servers, such as `pnpm test`, `pnpm dev`, or `npm test`.
 
 Security-lite checks run automatically and are required. High severity findings fail the proof and produce a `no-ship` decision. Findings include line numbers when available, redacted snippets, allowlist guidance, and SARIF output. See `docs/security-lite.md`.
 

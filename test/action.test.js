@@ -334,4 +334,54 @@ describe("runGitHubProof", () => {
     assert.deepEqual(result.report.checks.map((check) => check.name), ["security-lite", "browser-smoke"]);
     assert.equal(result.report.status, "passed");
   });
+
+  it("uses detected root package manager for browser smoke plans", async () => {
+    const browserPlans = [];
+
+    await runGitHubProof({
+      packageJson: {
+        scripts: { dev: "vite" },
+        devDependencies: { vite: "6.0.0" }
+      },
+      event: { pull_request: { number: 42 } },
+      env: {
+        GITHUB_REPOSITORY: "acme/demo",
+        INPUT_COMMENT: "false"
+      },
+      changedFiles: ["src/App.tsx"],
+      loadWorkspace: async () => ({
+        packageManager: "pnpm",
+        changedPackages: []
+      }),
+      executeCommand: async () => ({ exitCode: 0, durationMs: 25 }),
+      request: async () => [],
+      browserSmoke: async ({ plan }) => {
+        browserPlans.push(plan);
+        return {
+          name: "browser-smoke",
+          command: "playwright smoke (vite)",
+          status: "passed",
+          durationMs: 50,
+          summary: "1 routes passed; screenshots: shipproof-screenshots",
+          required: true
+        };
+      },
+      writeReport: async () => {},
+      appendSummary: async () => {}
+    });
+
+    assert.deepEqual(browserPlans, [
+      {
+        framework: "vite",
+        devCommand: "pnpm dev -- --host 127.0.0.1 --port 4173",
+        baseUrl: "http://127.0.0.1:4173",
+        routes: ["/"],
+        screenshotDir: "shipproof-screenshots",
+        logDir: "shipproof-browser-logs",
+        readyUrl: "http://127.0.0.1:4173",
+        timeoutMs: 30000,
+        waitUntil: "networkidle"
+      }
+    ]);
+  });
 });

@@ -75,7 +75,7 @@ export function discoverProjectCommands(packageJson, config, workspaceContext = 
     ];
   }
 
-  return discoverRootCommands(scripts, resolvedConfig);
+  return discoverRootCommands(scripts, resolvedConfig, packageManager);
 }
 
 function discoverRootCommands(scripts, resolvedConfig, packageManager = "npm") {
@@ -480,14 +480,15 @@ function deriveStatus(checkResults, requiredByName) {
     return "not_checked";
   }
 
-  const requiredChecks = checkResults.filter((check) => check.required === true || requiredByName.get(check.name) === true);
-  const requiredScope = requiredChecks.length > 0 ? requiredChecks : checkResults;
-  const hasFailedRequiredCheck = requiredScope.some((check) => check.status === "failed");
-  const hasUncheckedRequiredCheck = requiredScope.some((check) => check.status === "not_checked");
+  const hasFailedCheck = checkResults.some((check) => check.status === "failed");
 
-  if (hasFailedRequiredCheck) {
+  if (hasFailedCheck) {
     return "failed";
   }
+
+  const requiredChecks = checkResults.filter((check) => check.required === true || requiredByName.get(check.name) === true);
+  const requiredScope = requiredChecks.length > 0 ? requiredChecks : checkResults;
+  const hasUncheckedRequiredCheck = requiredScope.some((check) => check.status === "not_checked");
 
   return hasUncheckedRequiredCheck ? "not_checked" : "passed";
 }

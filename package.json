@@ -21,9 +21,15 @@
     "CHANGELOG.md",
     "bin/",
     "src/",
+    "scripts/mock-github-smoke.mjs",
+    "scripts/pack-smoke.mjs",
+    "scripts/release-readiness.mjs",
     "docs/browser-smoke.md",
     "docs/configuration.md",
+    "docs/beta-test-matrix.md",
     "docs/monorepo.md",
+    "docs/release-readiness.md",
+    "docs/release-notes/v0.2.0.md",
     "docs/security-lite.md",
     "docs/report-schema.md",
     "docs/live-github-verification.md"
@@ -31,6 +37,8 @@
   "scripts": {
     "test": "node --test",
     "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
+    "pack:smoke": "node scripts/pack-smoke.mjs",
+    "release:readiness": "node scripts/release-readiness.mjs",
     "shipproof": "node ./bin/shipproof.js"
   },
   "engines": {

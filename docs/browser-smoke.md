@@ -43,6 +43,7 @@ npm run shipproof -- \
   --browser-ready-url http://127.0.0.1:3000/health \
   --browser-timeout-ms 15000 \
   --browser-wait-until domcontentloaded \
+  --screenshot-dir shipproof-screenshots \
   --browser-log-dir shipproof-browser-logs
 ```
 
@@ -77,3 +78,5 @@ Default browser artifacts:
 - Dev server stderr: `shipproof-browser-logs/server.stderr.log`
 
 When a route fails, the proof summary includes the first browser error and the screenshot/log directories.
+
+Local `--screenshot-dir` and `--browser-log-dir` flags override the default artifact directories.

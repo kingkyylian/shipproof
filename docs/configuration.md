@@ -83,6 +83,7 @@ Action inputs still override CI-specific values such as report paths, SARIF path
 ## Policy
 
 - `checks.*`: use `"required"` or `"optional"` for discovered package scripts.
+- Any executed failed check fails the proof. A required failed check stops later command checks; an optional failed check lets later checks run but still produces a failed proof and `no-ship` decision.
 - `browser.enabled`: disables browser smoke planning when `false`.
 - `browser.required`: controls whether browser smoke is a required proof check.
 - `browser.baseUrl`: reuses an already-running dev server when set.

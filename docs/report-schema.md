@@ -30,8 +30,8 @@ ShipProof writes these report artifacts:
 
 ## Status
 
-- `passed`: all required checks passed.
-- `failed`: at least one required check failed.
+- `passed`: no executed check failed and all required checks ran.
+- `failed`: at least one executed check failed.
 - `not_checked`: at least one required check was skipped or no checks ran.
 
 ## Decision
@@ -59,6 +59,8 @@ Each check has:
 `failureExcerpt` is included only for failed command checks when stdout or stderr is available. ShipProof keeps it short and redacts likely secret assignment values so PR comments stay readable.
 
 `required` may be omitted for checks whose requirement level comes from project defaults or config.
+
+Optional checks can still fail the proof when they run and return a failed status. Optional means the failure does not short-circuit later command checks.
 
 ## Risks
 
