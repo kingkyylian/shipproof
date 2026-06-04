@@ -20,6 +20,7 @@
 3. Create the GitHub release:
    `gh release create vX.Y.Z --title "ShipProof vX.Y.Z" --notes-file docs/release-notes/vX.Y.Z.md`
 4. Verify tag and release:
+   `node scripts/post-release-verify.mjs --version X.Y.Z`
    `git ls-remote --tags origin "vX.Y.Z*"`
    `gh release view vX.Y.Z --json tagName,name,url,isDraft,isPrerelease,publishedAt,targetCommitish`
 5. Open a temporary dogfood PR that uses `kingkyylian/shipproof@vX.Y.Z`.
