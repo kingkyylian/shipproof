@@ -199,6 +199,7 @@ async function checkActionReferences(root, tag, errors) {
 
 async function checkReleaseReadinessDoc(root, version, releaseNotesPath, errors) {
   const tag = `v${version}`;
+  const releaseUrl = `https://github.com/kingkyylian/shipproof/releases/tag/${tag}`;
   const text = await readText(root, "docs/release-readiness.md", errors);
 
   if (!text) {
@@ -208,13 +209,12 @@ async function checkReleaseReadinessDoc(root, version, releaseNotesPath, errors)
   const requiredPhrases = [
     `Package version: \`${version}\``,
     "Package is still private: `package.json#private` is `true`",
-    `Missing tag: \`${tag}\``,
-    `Missing GitHub release: \`${tag}\``,
+    `Released tag: \`${tag}\``,
+    `GitHub release: \`${releaseUrl}\``,
+    "Dogfood run: `26881315207`",
+    "Dogfood PR: `#9`, closed without merge",
     "`npm run release:readiness`",
     releaseNotesPath,
-    `git tag ${tag}`,
-    `git push origin ${tag}`,
-    `gh release create ${tag}`,
     "Npm publishing is intentionally not ready"
   ];
 
