@@ -89,6 +89,34 @@ describe("release readiness gate", () => {
     }
   });
 
+  it("detects stale pre-release readiness docs", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const fixture = await createReleaseFixture({
+      releaseReadiness: [
+        "# ShipProof Release Readiness - v0.2.0",
+        "",
+        "- Package version: `0.2.0`",
+        "- Active docs reference: `kingkyylian/shipproof@v0.2.0`",
+        "- Package is still private: `package.json#private` is `true`",
+        "- Missing tag: `v0.2.0`",
+        "- Missing GitHub release: `v0.2.0`",
+        "- Run `npm run release:readiness` before approval.",
+        "- Use `docs/release-notes/v0.2.0.md` as the release notes source.",
+        "- Npm publishing is intentionally not ready.",
+        ""
+      ].join("\n")
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.match(result.errors.join("\n"), /Released tag.*v0\.2\.0/i);
+      assert.match(result.errors.join("\n"), /Dogfood run.*26881315207/i);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
   it("detects GitHub Action run entrypoint drift", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({
@@ -162,25 +190,7 @@ async function createReleaseFixture(overrides = {}) {
   await writeFile(path.join(fixture, "docs", "live-github-verification.md"), "Live GitHub verification notes.\n");
   await writeFile(
     path.join(fixture, "docs", "release-readiness.md"),
-    [
-      "# ShipProof Release Readiness - v0.2.0",
-      "",
-      "- Package version: `0.2.0`",
-      "- Active docs reference: `kingkyylian/shipproof@v0.2.0`",
-      "- Package is still private: `package.json#private` is `true`",
-      "- Missing tag: `v0.2.0`",
-      "- Missing GitHub release: `v0.2.0`",
-      "- Run `npm run release:readiness` before approval.",
-      "- Use `docs/release-notes/v0.2.0.md` as the release notes source.",
-      "- Npm publishing is intentionally not ready.",
-      "",
-      "```sh",
-      "git tag v0.2.0 <final-commit-sha>",
-      "git push origin v0.2.0",
-      "gh release create v0.2.0 --title \"ShipProof v0.2.0\" --notes-file docs/release-notes/v0.2.0.md",
-      "```",
-      ""
-    ].join("\n")
+    overrides.releaseReadiness ?? createReleaseReadinessDoc()
   );
   await writeFile(
     path.join(fixture, "package.json"),
@@ -188,6 +198,24 @@ async function createReleaseFixture(overrides = {}) {
   );
 
   return fixture;
+}
+
+function createReleaseReadinessDoc() {
+  return [
+    "# ShipProof Release Readiness - v0.2.0",
+    "",
+    "- Package version: `0.2.0`",
+    "- Active docs reference: `kingkyylian/shipproof@v0.2.0`",
+    "- Package is still private: `package.json#private` is `true`",
+    "- Released tag: `v0.2.0`",
+    "- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.2.0`",
+    "- Dogfood run: `26881315207`",
+    "- Dogfood PR: `#9`, closed without merge",
+    "- Run `npm run release:readiness` after release housekeeping changes.",
+    "- Use `docs/release-notes/v0.2.0.md` as the release notes source.",
+    "- Npm publishing is intentionally not ready.",
+    ""
+  ].join("\n");
 }
 
 function createPackageJson(overrides = {}) {

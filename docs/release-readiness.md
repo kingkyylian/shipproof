@@ -1,28 +1,52 @@
 # ShipProof Release Readiness - v0.2.0
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
-## Current Release State
+## Released State
 
 - Package version: `0.2.0`
 - Package is still private: `package.json#private` is `true`
-- Existing tag: `v0.1.0`
-- Missing tag: `v0.2.0`
-- Missing GitHub release: `v0.2.0`
+- Existing baseline tag: `v0.1.0`
+- Released tag: `v0.2.0`
+- Release target commit: `9e1f1b11f6f34f677dd445a58f69481523959987`
+- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.2.0`
 - Active docs reference: `kingkyylian/shipproof@v0.2.0`
 
-The `v0.2.0` tag and GitHub release must be created before external users can install the documented GitHub Action reference.
+The `v0.2.0` GitHub Action release is live. External users can install the documented action reference:
+
+```yaml
+- uses: kingkyylian/shipproof@v0.2.0
+```
 
 ## Verified Local Gates
 
 - `npm test`: 96/96 tests passed.
 - `npm run smoke:github-mock`: passed.
 - `npm run release:readiness`: passed.
-- `npm pack --dry-run`: passed, `shipproof@0.2.0`, 26 files, 34.9 kB.
+- `npm pack --dry-run`: passed, `shipproof@0.2.0`, 26 files, 35.0 kB.
 - `npm run pack:smoke -- --clean`: passed; packs `shipproof-0.2.0.tgz`, runs the packed CLI, and verifies JSON schema `1.0` plus SARIF `2.1.0` with 0 results.
 - `npm audit --omit=dev`: passed, 0 vulnerabilities.
 - `git diff --check`: passed.
 - ShipProof self-proof: passed, ship, score 88, JSON schema `1.0`, SARIF `2.1.0` with 0 results.
+
+## Release Verification
+
+- Release PR: `#8`, merged.
+- Release commit: `9e1f1b11f6f34f677dd445a58f69481523959987`.
+- Release tag: `v0.2.0`.
+- GitHub release: `ShipProof v0.2.0`, non-draft, non-prerelease.
+- Release notes source: `docs/release-notes/v0.2.0.md`.
+
+Post-release checks:
+
+- `git ls-remote --tags origin "v0.2.0*"` returned `v0.2.0` at `9e1f1b11f6f34f677dd445a58f69481523959987`.
+- `gh release view v0.2.0 --json tagName,name,url,isDraft,isPrerelease,publishedAt,targetCommitish` confirmed the public release.
+- Dogfood run: `26881315207`.
+- Dogfood PR: `#9`, closed without merge.
+- Dogfood workflow step: `Run kingkyylian/shipproof@v0.2.0`.
+- Dogfood report: passed, ship, score 100.
+- Dogfood JSON artifact: schema `1.0`, status `passed`, decision `ship`, score 100.
+- Dogfood SARIF artifact: version `2.1.0`, results 0.
 
 ## Beta Evidence
 
@@ -46,48 +70,17 @@ Failure evidence:
 
 Full matrix: `docs/beta-test-matrix.md`
 
-## Release Approval Required
+## Ongoing Contract Gate
 
-Do not run these without explicit release approval:
-
-Run the local contract gate before requesting that approval: `npm run release:readiness`
+Run this after release-housekeeping changes:
 
 ```sh
 npm run release:readiness
 ```
 
-```sh
-git tag v0.2.0 <final-commit-sha>
-git push origin v0.2.0
-gh release create v0.2.0 --title "ShipProof v0.2.0" --notes-file docs/release-notes/v0.2.0.md
-```
+The gate verifies package metadata, lockfile version, package file surface, release notes drift, action reference docs, GitHub Action entrypoint wiring, and this post-release evidence checklist.
 
 Use `docs/release-notes/v0.2.0.md` as the release notes source. The release notes file contains only the `0.2.0` section from `CHANGELOG.md`, not the entire changelog.
-
-## Post-Release Verification
-
-After the tag and release are created, verify:
-
-```sh
-git ls-remote --tags origin "v0.2.0*"
-gh release view v0.2.0 --json tagName,name,url,isDraft,isPrerelease,publishedAt
-```
-
-Then dogfood the documented action reference:
-
-```yaml
-- uses: kingkyylian/shipproof@v0.2.0
-```
-
-The dogfood run should prove:
-
-- workflow conclusion is `success` for a passing proof;
-- Markdown report artifact exists;
-- JSON report artifact exists;
-- SARIF artifact exists;
-- PR comment contains `<!-- shipproof-report -->`;
-- report status is `passed`;
-- decision is `ship`.
 
 ## Npm Publishing
 
@@ -97,4 +90,4 @@ Npm publishing is intentionally not ready:
 - local npm auth was previously missing;
 - no trusted publishing workflow exists yet.
 
-Treat npm as a later release channel. The immediate release path is the GitHub Action tag and GitHub release.
+Treat npm as a later release channel. The completed `v0.2.0` release path is the GitHub Action tag and GitHub release.
