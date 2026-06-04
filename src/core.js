@@ -143,6 +143,7 @@ export function createProofReport({
   const suggestedNextTests = suggestNextTests(risks);
   const rerunCommands = suggestRerunCommands({ checks: checkResults, changedFiles, status, decision });
   const activeSecurityFindings = securityFindings.filter((finding) => finding.status !== "baseline");
+  const browserRoutes = extractBrowserRoutes(checkResults);
   const agentFeedbackPrompt = createAgentFeedbackPrompt({
     decision,
     status,
@@ -164,6 +165,7 @@ export function createProofReport({
     securityFindings,
     suggestedNextTests,
     rerunCommands,
+    browserRoutes,
     artifacts: normalizeArtifacts(artifacts),
     agentFeedbackPrompt
   };
@@ -554,6 +556,12 @@ function suggestRerunCommands({ checks, changedFiles, status, decision }) {
   }
 
   return unique(commands);
+}
+
+function extractBrowserRoutes(checks) {
+  const routes = checks.flatMap((check) => Array.isArray(check.browserRoutes) ? check.browserRoutes : []);
+
+  return routes.length > 0 ? routes : undefined;
 }
 
 function normalizeArtifacts(artifacts) {

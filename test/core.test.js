@@ -614,6 +614,46 @@ describe("runProof", () => {
     assert.match(report.markdown, /browser-smoke/);
   });
 
+  it("exposes browser route results in the report payload", () => {
+    const report = createProofReport({
+      packageJson: {
+        scripts: {
+          test: "node --test"
+        }
+      },
+      changedFiles: ["src/app/page.tsx"],
+      checkResults: [
+        { name: "test", command: "npm test", status: "passed", durationMs: 100 },
+        {
+          name: "browser-smoke",
+          command: "playwright smoke",
+          status: "failed",
+          durationMs: 75,
+          summary: "/ failed: console error",
+          required: true,
+          browserRoutes: [
+            {
+              route: "/",
+              status: "failed",
+              screenshot: "shipproof-screenshots/home.png",
+              errors: ["console error: Hydration failed"]
+            }
+          ]
+        }
+      ],
+      generatedAt: "2026-06-02T20:00:00.000Z"
+    });
+
+    assert.deepEqual(report.browserRoutes, [
+      {
+        route: "/",
+        status: "failed",
+        screenshot: "shipproof-screenshots/home.png",
+        errors: ["console error: Hydration failed"]
+      }
+    ]);
+  });
+
   it("runs security scan before browser smoke and skips browser after high security failure", async () => {
     let browserRan = false;
     const report = await runProof({

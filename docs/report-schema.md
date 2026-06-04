@@ -22,6 +22,7 @@ ShipProof writes these report artifacts:
   "securityFindings": [],
   "suggestedNextTests": [],
   "rerunCommands": [],
+  "browserRoutes": [],
   "artifacts": {},
   "agentFeedbackPrompt": null,
   "markdown": "# ShipProof Report\n..."
@@ -130,6 +131,28 @@ SARIF output is written separately from the JSON report. Each active security fi
 ## Rerun Commands
 
 `rerunCommands` contains concrete commands for non-ship or review reports. It includes failed or skipped check commands and a ShipProof rerun command scoped to the changed file list when available.
+
+## Browser Routes
+
+`browserRoutes` is included when browser smoke runs:
+
+```json
+[
+  {
+    "route": "/settings",
+    "status": "failed",
+    "screenshot": "shipproof-screenshots/settings.png",
+    "errors": ["console error: Hydration failed"]
+  }
+]
+```
+
+Each route result has:
+
+- `route`: checked path.
+- `status`: `passed` or `failed`.
+- `screenshot`: captured screenshot path.
+- `errors`: browser console, page, network, or navigation errors. It is empty or omitted for passing routes.
 
 ## Artifacts
 

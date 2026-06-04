@@ -16,6 +16,7 @@ Supported automatic framework detection:
 - Captures screenshots for checked routes.
 - Captures dev server stdout and stderr logs when ShipProof starts the server.
 - Includes the last dev server stdout/stderr lines in startup timeout and early-exit failures.
+- Adds route-level results to the JSON report under `browserRoutes`.
 
 ## Config
 
@@ -81,5 +82,7 @@ Default browser artifacts:
 When a route fails, the proof summary includes the first browser error and the screenshot/log directories.
 
 When the dev server exits early or never reaches the readiness URL, the failure includes the log file paths plus the last captured stdout/stderr lines. ShipProof keeps the last 20 lines from each stream in memory while still writing full logs to disk.
+
+The JSON report includes one `browserRoutes` entry per checked route with `route`, `status`, `screenshot`, and `errors` fields.
 
 Local `--screenshot-dir` and `--browser-log-dir` flags override the default artifact directories.

@@ -132,6 +132,7 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
       status: failures.length > 0 ? "failed" : "passed",
       durationMs: Math.round(performance.now() - startedAt),
       summary: appendLogSummary(summarizeBrowserResults(routeResults, plan.screenshotDir), server?.logs),
+      browserRoutes: routeResults,
       required: plan.required ?? true
     };
   } catch (error) {

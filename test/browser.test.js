@@ -227,6 +227,10 @@ describe("runBrowserSmoke", () => {
     assert.equal(check.name, "browser-smoke");
     assert.equal(check.status, "passed");
     assert.equal(check.required, true);
+    assert.deepEqual(check.browserRoutes, [
+      { route: "/login", status: "passed", screenshot: "shipproof-screenshots/login.png" },
+      { route: "/settings", status: "passed", screenshot: "shipproof-screenshots/settings.png" }
+    ]);
     assert.match(check.summary, /2 routes passed/);
     assert.match(check.summary, /shipproof-screenshots/);
   });
@@ -276,6 +280,14 @@ describe("runBrowserSmoke", () => {
     });
 
     assert.equal(check.status, "failed");
+    assert.deepEqual(check.browserRoutes, [
+      {
+        route: "/",
+        status: "failed",
+        screenshot: "shipproof-screenshots/home.png",
+        errors: ["console error: Hydration failed", "network 500: /api/user"]
+      }
+    ]);
     assert.match(check.summary, /\/ failed: console error: Hydration failed/);
   });
 
