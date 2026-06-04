@@ -1,6 +1,6 @@
 # ShipProof Beta Test Matrix - 2026-06-02
 
-This matrix records local beta runs against real repositories before the `v0.2.0` tag is created.
+This matrix records local beta runs against real repositories. The current entries supported the `v0.2.0` release; new entries should follow the feedback contract in `docs/beta-feedback.md` and count toward the `v0.3.0` evidence targets below.
 
 ## Scope
 
@@ -76,6 +76,26 @@ The corrected portfolio rerun exited non-zero and produced `failed`, `no-ship`, 
 - Local browser artifact flags now override default config paths in the report.
 - Required browser smoke was verified with a real Chromium render in a hermetic fixture.
 
+## v0.3 Evidence Targets
+
+Before `v0.3.0`, record:
+
+- 10 successful reports across real repositories.
+- 2 failing reports that correctly block a bad merge.
+- 2 browser-smoke reports with real screenshots.
+- 2 monorepo reports.
+- 1 fork or permission-degraded GitHub PR scenario.
+
+Current counted evidence:
+
+| Target | Count | Evidence |
+| --- | ---: | --- |
+| Successful real-repository reports | 6 / 10 | `trustq`, `admin-web`, `cvboost`, `unity-apple-scaffold-agent`, `handoffkit`, `tcli` |
+| Correct blocking failure reports | 1 / 2 | `portfolio` lint failure produced failed/no-ship |
+| Browser screenshots | 1 / 2 | Playwright fixture produced `home.png` |
+| Monorepo reports | 1 / 2 | `tcli` pnpm workspace report |
+| Fork or permission-degraded PR scenarios | 0 / 1 | Pending |
+
 ## Worktree Notes
 
 - `handoffkit` remained clean after the beta run.
@@ -86,5 +106,5 @@ The corrected portfolio rerun exited non-zero and produced `failed`, `no-ship`, 
 
 - A product-repo Playwright browser matrix is still pending because no local Next/Vite beta candidate in this pass had `playwright` or `@playwright/test` installed.
 - Additional large monorepo coverage remains useful, but `tcli` now covers pnpm workspace package mapping for a real CLI workspace.
-- `v0.2.0` tag and GitHub release still need explicit approval before release verification can use `kingkyylian/shipproof@v0.2.0`.
+- `v0.2.0` is released, but the v0.3 matrix still needs more real-repository and GitHub PR evidence.
 - Npm publishing remains out of scope until package privacy, auth, and trusted publishing policy are decided.
