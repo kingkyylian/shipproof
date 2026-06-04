@@ -14,7 +14,7 @@
   },
   "homepage": "https://github.com/kingkyylian/shipproof#readme",
   "bin": {
-    "shipproof": "./bin/shipproof.js"
+    "shipproof": "bin/shipproof.js"
   },
   "files": [
     "action.yml",
@@ -38,6 +38,7 @@
     "test": "node --test",
     "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
     "pack:smoke": "node scripts/pack-smoke.mjs",
+    "publish:dry-run": "npm publish --dry-run",
     "release:readiness": "node scripts/release-readiness.mjs",
     "shipproof": "node ./bin/shipproof.js"
   },

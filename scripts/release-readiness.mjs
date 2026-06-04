@@ -106,8 +106,8 @@ async function checkPackageJson(packageJson, version, releaseNotesPath, errors) 
     errors.push('package.json#scripts.pack:smoke must be "node scripts/pack-smoke.mjs".');
   }
 
-  if (packageJson.bin?.shipproof !== "./bin/shipproof.js") {
-    errors.push('package.json#bin.shipproof must be "./bin/shipproof.js".');
+  if (packageJson.bin?.shipproof !== "bin/shipproof.js") {
+    errors.push('package.json#bin.shipproof must be "bin/shipproof.js".');
   }
 
   const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];

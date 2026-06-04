@@ -5,7 +5,7 @@
 - `package.json#private` is `true`.
 - GitHub Action distribution is live at `kingkyylian/shipproof@v0.2.0`.
 - npm publishing is not part of the current release channel.
-- Release validation already includes `npm pack --dry-run` and `npm run pack:smoke -- --clean`.
+- Release validation already includes `npm pack --dry-run`, `npm run pack:smoke -- --clean`, and a local `publish:dry-run` script.
 
 ## Required Decisions
 
@@ -21,12 +21,13 @@
 1. Open a dedicated npm publishing PR.
 2. Remove `private: true` in that PR only.
 3. Add the trusted publishing workflow in `.github/workflows/npm-publish.yml`.
-4. Add a local `publish:dry-run` script once it can pass without publishing.
+4. Keep the local `publish:dry-run` script passing without publishing.
 5. Run the full release gate:
    - `npm test`
    - `npm run release:readiness`
    - `npm run pack:smoke -- --clean`
    - `npm pack --dry-run`
+   - `npm run publish:dry-run`
    - `npm audit --omit=dev`
    - `git diff --check`
 6. Run `npm publish --dry-run` from the exact commit intended for release.
