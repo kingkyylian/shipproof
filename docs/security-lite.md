@@ -11,6 +11,9 @@ ShipProof currently checks for:
 - public client variables that include secret/token/private-key names
 - wildcard CORS
 - auth-sensitive path changes
+- public Supabase storage buckets
+- disabled Supabase/Postgres row level security
+- broad `anon` write policies in SQL migrations
 
 Each finding includes:
 

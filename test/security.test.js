@@ -220,6 +220,28 @@ describe("scanSecurityFindings", () => {
       required: true
     });
   });
+
+  it("flags Supabase public storage, disabled RLS, and broad anon writes", () => {
+    const findings = scanSecurityFindings([
+      {
+        path: "supabase/migrations/20260604_storage_rls.sql",
+        content: [
+          "insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);",
+          "alter table public.profiles disable row level security;",
+          "create policy anon_insert on public.profiles for insert to anon with check (true);",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    assert.deepEqual(findings.map((finding) => finding.id), [
+      "public-storage-policy",
+      "rls-disabled",
+      "broad-anon-write"
+    ]);
+    assert.deepEqual(findings.map((finding) => finding.severity), ["high", "high", "high"]);
+    assert.deepEqual(findings.map((finding) => finding.line), [1, 2, 3]);
+  });
 });
 
 function corsHeader() {

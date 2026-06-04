@@ -8,6 +8,9 @@ const UNSAFE_CORS_PATTERNS = [
   /access-control-allow-origin['"]?\s*[:=]\s*['"]\*/i,
   /origin\s*:\s*['"]\*['"]/i
 ];
+const PUBLIC_STORAGE_BUCKET = /\binsert\s+into\s+storage\.buckets\b[^\n]*\bpublic\b[^\n]*\btrue\b/i;
+const RLS_DISABLED = /\balter\s+table\s+[\w".]+\.[\w"]+\s+disable\s+row\s+level\s+security\b/i;
+const BROAD_ANON_WRITE = /\bcreate\s+policy\b[^\n]*\bfor\s+(?:insert|update|delete|all)\b[^\n]*\bto\s+anon\b[^\n]*(?:using|with\s+check)\s*\(\s*true\s*\)/i;
 const ALLOWLIST_HINT = "Add security.allow with id, file, line, reason, and expiresAt if this is intentional.";
 const SARIF_LEVEL_BY_SEVERITY = {
   high: "error",
@@ -40,6 +43,7 @@ export function scanSecurityFindings(files, config = {}) {
 
     findings.push(...findUnsafeCorsFindings(file.path, content));
     findings.push(...findPublicSecretFindings(file.path, content));
+    findings.push(...findSupabaseSqlFindings(file.path, content));
 
     if (isAuthSensitivePath(normalizedPath)) {
       findings.push(withAllowlistHint({
@@ -252,6 +256,48 @@ function findPublicSecretFindings(file, content) {
       column: location.column,
       snippet: redactSecretSnippet(location.text, name),
       message: "Public client environment variables should not contain secrets or tokens."
+    }));
+  }
+
+  return findings;
+}
+
+function findSupabaseSqlFindings(file, content) {
+  const rules = [
+    {
+      id: "public-storage-policy",
+      pattern: PUBLIC_STORAGE_BUCKET,
+      message: "Supabase storage bucket is configured as public."
+    },
+    {
+      id: "rls-disabled",
+      pattern: RLS_DISABLED,
+      message: "Row level security is disabled on a database table."
+    },
+    {
+      id: "broad-anon-write",
+      pattern: BROAD_ANON_WRITE,
+      message: "Anon role has a broad write policy."
+    }
+  ];
+  const findings = [];
+
+  for (const rule of rules) {
+    const match = rule.pattern.exec(content);
+
+    if (!match) {
+      continue;
+    }
+
+    const location = locationForIndex(content, match.index ?? 0);
+    findings.push(withAllowlistHint({
+      id: rule.id,
+      severity: "high",
+      file,
+      line: location.line,
+      column: location.column,
+      snippet: location.text.trim(),
+      message: rule.message
     }));
   }
 
