@@ -747,7 +747,8 @@ describe("runProof", () => {
           reason: "Intentional public endpoint.",
           expiresAt: "2026-07-01"
         }
-      ]
+      ],
+      severity: {}
     });
   });
 

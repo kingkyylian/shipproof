@@ -19,7 +19,8 @@ export const DEFAULT_SHIPPROOF_CONFIG = {
   security: {
     enabled: true,
     allow: [],
-    baseline: []
+    baseline: [],
+    severity: {}
   },
   workspace: {
     enabled: true,
@@ -57,7 +58,10 @@ export function resolveShipProofConfig(config = {}) {
         : DEFAULT_SHIPPROOF_CONFIG.security.allow,
       baseline: Array.isArray(config.security?.baseline)
         ? config.security.baseline
-        : DEFAULT_SHIPPROOF_CONFIG.security.baseline
+        : DEFAULT_SHIPPROOF_CONFIG.security.baseline,
+      severity: isPlainObject(config.security?.severity)
+        ? config.security.severity
+        : DEFAULT_SHIPPROOF_CONFIG.security.severity
     },
     workspace: {
       ...DEFAULT_SHIPPROOF_CONFIG.workspace,
@@ -72,6 +76,10 @@ export function resolveShipProofConfig(config = {}) {
       ...(config.reports ?? {})
     }
   };
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 export async function loadShipProofConfig({ filePath, readFile } = {}) {

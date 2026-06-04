@@ -8,17 +8,22 @@ const UNSAFE_CORS_PATTERNS = [
   /access-control-allow-origin['"]?\s*[:=]\s*['"]\*/i,
   /origin\s*:\s*['"]\*['"]/i
 ];
+const PUBLIC_STORAGE_BUCKET = /\binsert\s+into\s+storage\.buckets\b[^\n]*\bpublic\b[^\n]*\btrue\b/i;
+const RLS_DISABLED = /\balter\s+table\s+[\w".]+\.[\w"]+\s+disable\s+row\s+level\s+security\b/i;
+const BROAD_ANON_WRITE = /\bcreate\s+policy\b[^\n]*\bfor\s+(?:insert|update|delete|all)\b[^\n]*\bto\s+anon\b[^\n]*(?:using|with\s+check)\s*\(\s*true\s*\)/i;
 const ALLOWLIST_HINT = "Add security.allow with id, file, line, reason, and expiresAt if this is intentional.";
 const SARIF_LEVEL_BY_SEVERITY = {
   high: "error",
   medium: "warning",
   low: "note"
 };
+const VALID_SEVERITIES = new Set(["high", "medium", "low"]);
 
 export function scanSecurityFindings(files, config = {}) {
   const findings = [];
   const allow = Array.isArray(config.allow) ? config.allow : [];
   const baseline = Array.isArray(config.baseline) ? config.baseline : [];
+  const severityOverrides = isPlainObject(config.severity) ? config.severity : {};
   const now = toDate(config.now) ?? new Date();
 
   for (const file of files) {
@@ -40,6 +45,7 @@ export function scanSecurityFindings(files, config = {}) {
 
     findings.push(...findUnsafeCorsFindings(file.path, content));
     findings.push(...findPublicSecretFindings(file.path, content));
+    findings.push(...findSupabaseSqlFindings(file.path, content));
 
     if (isAuthSensitivePath(normalizedPath)) {
       findings.push(withAllowlistHint({
@@ -55,6 +61,7 @@ export function scanSecurityFindings(files, config = {}) {
 
   return findings
     .filter((finding) => !isAllowlisted(finding, allow, now))
+    .map((finding) => applySeverityOverride(finding, severityOverrides))
     .map((finding) => withBaselineStatus(finding, baseline, now));
 }
 
@@ -258,6 +265,56 @@ function findPublicSecretFindings(file, content) {
   return findings;
 }
 
+function findSupabaseSqlFindings(file, content) {
+  if (!isSqlFile(file)) {
+    return [];
+  }
+
+  const rules = [
+    {
+      id: "public-storage-policy",
+      pattern: PUBLIC_STORAGE_BUCKET,
+      message: "Supabase storage bucket is configured as public."
+    },
+    {
+      id: "rls-disabled",
+      pattern: RLS_DISABLED,
+      message: "Row level security is disabled on a database table."
+    },
+    {
+      id: "broad-anon-write",
+      pattern: BROAD_ANON_WRITE,
+      message: "Anon role has a broad write policy."
+    }
+  ];
+  const findings = [];
+
+  for (const rule of rules) {
+    const match = rule.pattern.exec(content);
+
+    if (!match) {
+      continue;
+    }
+
+    const location = locationForIndex(content, match.index ?? 0);
+    findings.push(withAllowlistHint({
+      id: rule.id,
+      severity: "high",
+      file,
+      line: location.line,
+      column: location.column,
+      snippet: location.text.trim(),
+      message: rule.message
+    }));
+  }
+
+  return findings;
+}
+
+function isSqlFile(file) {
+  return normalizePath(file).toLowerCase().endsWith(".sql");
+}
+
 function isCommittedEnvFile(file) {
   const name = path.posix.basename(file);
   return name.startsWith(".env") && !name.includes("example") && !name.includes("sample") && !name.includes("template");
@@ -302,6 +359,19 @@ function withBaselineStatus(finding, baseline, now) {
     status: "baseline",
     baselineReason: entry.reason,
     ...(entry.expiresAt ? { baselineExpiresAt: entry.expiresAt } : {})
+  };
+}
+
+function applySeverityOverride(finding, severityOverrides) {
+  const severity = severityOverrides[finding.id];
+
+  if (!VALID_SEVERITIES.has(severity)) {
+    return finding;
+  }
+
+  return {
+    ...finding,
+    severity
   };
 }
 
@@ -401,6 +471,10 @@ function toDate(value) {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function escapeRegExp(value) {

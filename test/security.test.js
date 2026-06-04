@@ -220,6 +220,80 @@ describe("scanSecurityFindings", () => {
       required: true
     });
   });
+
+  it("flags Supabase public storage, disabled RLS, and broad anon writes", () => {
+    const findings = scanSecurityFindings([
+      {
+        path: "supabase/migrations/20260604_storage_rls.sql",
+        content: [
+          "insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);",
+          "alter table public.profiles disable row level security;",
+          "create policy anon_insert on public.profiles for insert to anon with check (true);",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    assert.deepEqual(findings.map((finding) => finding.id), [
+      "public-storage-policy",
+      "rls-disabled",
+      "broad-anon-write"
+    ]);
+    assert.deepEqual(findings.map((finding) => finding.severity), ["high", "high", "high"]);
+    assert.deepEqual(findings.map((finding) => finding.line), [1, 2, 3]);
+  });
+
+  it("applies configured severity overrides by finding id", () => {
+    const findings = scanSecurityFindings(
+      [
+        {
+          path: "src/api/route.ts",
+          content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+        },
+        {
+          path: "supabase/migrations/20260604_storage.sql",
+          content: "insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);"
+        }
+      ],
+      {
+        severity: {
+          "unsafe-cors": "medium",
+          "public-storage-policy": "low"
+        }
+      }
+    );
+
+    assert.deepEqual(
+      findings.map((finding) => [finding.id, finding.severity]),
+      [
+        ["unsafe-cors", "medium"],
+        ["public-storage-policy", "low"]
+      ]
+    );
+    assert.deepEqual(buildSecurityCheck(findings), {
+      name: "security-lite",
+      command: "shipproof security-lite",
+      status: "passed",
+      summary: "1 medium security finding",
+      required: true
+    });
+  });
+
+  it("does not flag Supabase SQL examples in non-SQL files", () => {
+    const findings = scanSecurityFindings([
+      {
+        path: "test/security.test.js",
+        content: [
+          "\"insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);\",",
+          "\"alter table public.profiles disable row level security;\",",
+          "\"create policy anon_insert on public.profiles for insert to anon with check (true);\",",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    assert.deepEqual(findings, []);
+  });
 });
 
 function corsHeader() {
