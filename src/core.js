@@ -301,6 +301,16 @@ export function renderProofReport({
   }
 
   lines.push(
+    "",
+    "## Merge Signal",
+    "",
+    "| Status | Decision | Score | Failed Checks | Security Findings | Artifacts |",
+    "| --- | --- | --- | ---: | ---: | --- |",
+    `| ${formatStatus(status)} | ${decision ?? "n/a"} | ${formatScore(score)} | ${countChecksByStatus(checks, "failed")} | ${securityFindings.length} | ${formatArtifactSummary(artifacts)} |`,
+    ""
+  );
+
+  lines.push(
     `**Generated:** ${generatedAt}`,
     "",
     "## Checks",
@@ -411,6 +421,26 @@ function formatDuration(durationMs) {
   }
 
   return `${(durationMs / 1000).toFixed(1)}s`;
+}
+
+function formatScore(score) {
+  return typeof score === "number" ? `${score}/100` : "n/a";
+}
+
+function countChecksByStatus(checks, status) {
+  return checks.filter((check) => check.status === status).length;
+}
+
+function formatArtifactSummary(artifacts) {
+  const artifactLines = formatArtifacts(artifacts);
+
+  if (artifactLines.length === 0) {
+    return "none";
+  }
+
+  return artifactLines
+    .map((line) => line.replace(/^- /, "").replace(/: `.*`$/, ""))
+    .join(", ");
 }
 
 function formatSecurityLocation(finding) {

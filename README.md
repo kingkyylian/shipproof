@@ -17,6 +17,7 @@ ShipProof is a verification layer for AI-generated code. It does not write code 
 - Writes a JSON report payload with `schemaVersion: "1.0"` in GitHub mode.
 - Writes SARIF security-lite results in GitHub mode.
 - Adds failed-check excerpts, rerun commands, and artifact references to merge-facing reports.
+- Adds a compact `Merge Signal` block to PR reports with status, decision, score, failed checks, security findings, and artifacts.
 - Tracks baseline security findings without blocking new work.
 - Generates a focused agent feedback prompt for `review` and `no-ship` reports.
 

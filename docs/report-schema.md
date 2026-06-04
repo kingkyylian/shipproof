@@ -40,6 +40,27 @@ ShipProof writes these report artifacts:
 - `review`: no hard failure, but risk or score requires human review.
 - `no-ship`: do not merge until failures or high-severity issues are fixed.
 
+## Markdown Report
+
+The Markdown report starts with a compact `## Merge Signal` table for PR scanning:
+
+```md
+## Merge Signal
+
+| Status | Decision | Score | Failed Checks | Security Findings | Artifacts |
+| --- | --- | --- | ---: | ---: | --- |
+| failed | no-ship | 35/100 | 1 | 1 | Markdown report, JSON report, Security SARIF |
+```
+
+The table summarizes:
+
+- `Status`: proof execution status.
+- `Decision`: merge recommendation.
+- `Score`: 0-100 ship score, or `n/a` when unavailable.
+- `Failed Checks`: number of checks with `status: "failed"`.
+- `Security Findings`: number of findings in the report payload.
+- `Artifacts`: known artifact categories, or `none`.
+
 ## Checks
 
 Each check has:
