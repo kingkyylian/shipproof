@@ -80,6 +80,23 @@ Baseline matching uses the same `id`, `file`, optional `line`, `reason`, `expire
 
 Matched baseline findings stay in Markdown and JSON reports with `status: "baseline"`, but they do not fail `security-lite`, reduce the ship score, or appear in SARIF. Expired baseline entries become active findings again.
 
+## Severity Overrides
+
+Use `security.severity` to tune finding severity by ID:
+
+```json
+{
+  "security": {
+    "severity": {
+      "unsafe-cors": "medium",
+      "public-storage-policy": "high"
+    }
+  }
+}
+```
+
+Supported severity values are `high`, `medium`, and `low`. Invalid override values are ignored.
+
 ## SARIF
 
 GitHub Action mode writes SARIF security-lite results to `shipproof-security.sarif` by default. Override it with:

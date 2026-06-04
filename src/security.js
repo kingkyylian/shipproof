@@ -17,11 +17,13 @@ const SARIF_LEVEL_BY_SEVERITY = {
   medium: "warning",
   low: "note"
 };
+const VALID_SEVERITIES = new Set(["high", "medium", "low"]);
 
 export function scanSecurityFindings(files, config = {}) {
   const findings = [];
   const allow = Array.isArray(config.allow) ? config.allow : [];
   const baseline = Array.isArray(config.baseline) ? config.baseline : [];
+  const severityOverrides = isPlainObject(config.severity) ? config.severity : {};
   const now = toDate(config.now) ?? new Date();
 
   for (const file of files) {
@@ -59,6 +61,7 @@ export function scanSecurityFindings(files, config = {}) {
 
   return findings
     .filter((finding) => !isAllowlisted(finding, allow, now))
+    .map((finding) => applySeverityOverride(finding, severityOverrides))
     .map((finding) => withBaselineStatus(finding, baseline, now));
 }
 
@@ -351,6 +354,19 @@ function withBaselineStatus(finding, baseline, now) {
   };
 }
 
+function applySeverityOverride(finding, severityOverrides) {
+  const severity = severityOverrides[finding.id];
+
+  if (!VALID_SEVERITIES.has(severity)) {
+    return finding;
+  }
+
+  return {
+    ...finding,
+    severity
+  };
+}
+
 function findMatchingPolicyEntry(finding, entries, now) {
   return entries.find((entry) => {
     if (!entry?.id || !entry?.file || !entry.reason || isExpired(entry.expiresAt, now)) {
@@ -447,6 +463,10 @@ function toDate(value) {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function escapeRegExp(value) {

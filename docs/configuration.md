@@ -35,6 +35,10 @@ ShipProof works without a config file. Add `shipproof.config.json` when a reposi
         "expiresAt": "2026-07-01"
       }
     ],
+    "severity": {
+      "unsafe-cors": "medium",
+      "public-storage-policy": "high"
+    },
     "baseline": [
       {
         "id": "unsafe-cors",
@@ -96,6 +100,7 @@ Action inputs still override CI-specific values such as report paths, SARIF path
 - `security.enabled`: disables security-lite checks when `false`.
 - `security.allow`: suppresses intentional findings when `id`, `file`, optional `line`, `reason`, and non-expired `expiresAt` match.
 - `security.baseline`: marks known existing findings as non-blocking while keeping them visible in reports; expired entries become active findings again.
+- `security.severity`: overrides finding severity by ID with `"high"`, `"medium"`, or `"low"`.
 - `workspace.enabled`: disables workspace targeting when `false`.
 - `workspace.includeRoot`: runs root checks in addition to changed workspace package checks.
 - `score.ship`: minimum score for `ship`.

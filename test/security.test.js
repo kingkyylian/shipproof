@@ -242,6 +242,42 @@ describe("scanSecurityFindings", () => {
     assert.deepEqual(findings.map((finding) => finding.severity), ["high", "high", "high"]);
     assert.deepEqual(findings.map((finding) => finding.line), [1, 2, 3]);
   });
+
+  it("applies configured severity overrides by finding id", () => {
+    const findings = scanSecurityFindings(
+      [
+        {
+          path: "src/api/route.ts",
+          content: `return new Response('ok', { headers: { '${corsHeader()}': '*' } });`
+        },
+        {
+          path: "supabase/migrations/20260604_storage.sql",
+          content: "insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);"
+        }
+      ],
+      {
+        severity: {
+          "unsafe-cors": "medium",
+          "public-storage-policy": "low"
+        }
+      }
+    );
+
+    assert.deepEqual(
+      findings.map((finding) => [finding.id, finding.severity]),
+      [
+        ["unsafe-cors", "medium"],
+        ["public-storage-policy", "low"]
+      ]
+    );
+    assert.deepEqual(buildSecurityCheck(findings), {
+      name: "security-lite",
+      command: "shipproof security-lite",
+      status: "passed",
+      summary: "1 medium security finding",
+      required: true
+    });
+  });
 });
 
 function corsHeader() {

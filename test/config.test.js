@@ -26,7 +26,8 @@ describe("resolveShipProofConfig", () => {
       security: {
         enabled: true,
         allow: [],
-        baseline: []
+        baseline: [],
+        severity: {}
       },
       workspace: {
         enabled: true,
@@ -76,7 +77,8 @@ describe("resolveShipProofConfig", () => {
         security: {
           enabled: true,
           allow: [],
-          baseline: []
+          baseline: [],
+          severity: {}
         },
         workspace: {
           enabled: true,
@@ -139,5 +141,21 @@ describe("loadShipProofConfig", () => {
         expiresAt: "2026-07-01"
       }
     ]);
+  });
+
+  it("keeps configured security severity overrides", () => {
+    const config = resolveShipProofConfig({
+      security: {
+        severity: {
+          "unsafe-cors": "medium",
+          "public-storage-policy": "high"
+        }
+      }
+    });
+
+    assert.deepEqual(config.security.severity, {
+      "unsafe-cors": "medium",
+      "public-storage-policy": "high"
+    });
   });
 });
