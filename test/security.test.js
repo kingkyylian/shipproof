@@ -278,6 +278,22 @@ describe("scanSecurityFindings", () => {
       required: true
     });
   });
+
+  it("does not flag Supabase SQL examples in non-SQL files", () => {
+    const findings = scanSecurityFindings([
+      {
+        path: "test/security.test.js",
+        content: [
+          "\"insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);\",",
+          "\"alter table public.profiles disable row level security;\",",
+          "\"create policy anon_insert on public.profiles for insert to anon with check (true);\",",
+          ""
+        ].join("\n")
+      }
+    ]);
+
+    assert.deepEqual(findings, []);
+  });
 });
 
 function corsHeader() {

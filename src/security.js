@@ -266,6 +266,10 @@ function findPublicSecretFindings(file, content) {
 }
 
 function findSupabaseSqlFindings(file, content) {
+  if (!isSqlFile(file)) {
+    return [];
+  }
+
   const rules = [
     {
       id: "public-storage-policy",
@@ -305,6 +309,10 @@ function findSupabaseSqlFindings(file, content) {
   }
 
   return findings;
+}
+
+function isSqlFile(file) {
+  return normalizePath(file).toLowerCase().endsWith(".sql");
 }
 
 function isCommittedEnvFile(file) {
