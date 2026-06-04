@@ -176,6 +176,13 @@ describe("renderProofReport", () => {
         "# ShipProof Report",
         "",
         "**Status:** failed",
+        "",
+        "## Merge Signal",
+        "",
+        "| Status | Decision | Score | Failed Checks | Security Findings | Artifacts |",
+        "| --- | --- | --- | ---: | ---: | --- |",
+        "| failed | n/a | n/a | 1 | 0 | none |",
+        "",
         "**Generated:** 2026-06-01T14:31:00.000Z",
         "",
         "## Checks",
@@ -232,6 +239,39 @@ describe("renderProofReport", () => {
     assert.match(markdown, /src\/api\/route\.ts:4/);
     assert.match(markdown, /Wildcard CORS header allows any origin/);
     assert.match(markdown, /Wildcard CORS allows any origin/);
+  });
+
+  it("renders a compact merge signal for PR scanning", () => {
+    const markdown = renderProofReport({
+      status: "failed",
+      generatedAt: "2026-06-02T19:10:00.000Z",
+      decision: "no-ship",
+      score: 35,
+      checks: [
+        { name: "lint", command: "npm run lint", status: "failed", durationMs: 100, summary: "lint failed" },
+        { name: "test", command: "npm test", status: "not_checked", summary: "Skipped after lint failure" },
+        { name: "security-lite", command: "shipproof security-lite", status: "passed", summary: "clean" }
+      ],
+      risks: [],
+      securityFindings: [
+        {
+          id: "unsafe-cors",
+          severity: "high",
+          file: "src/api/route.ts",
+          message: "Wildcard CORS allows any origin."
+        }
+      ],
+      suggestedNextTests: [],
+      artifacts: {
+        markdown: "shipproof-report.md",
+        json: "shipproof-report.json",
+        sarif: "shipproof-security.sarif"
+      }
+    });
+
+    assert.match(markdown, /## Merge Signal/);
+    assert.match(markdown, /\| Status \| Decision \| Score \| Failed Checks \| Security Findings \| Artifacts \|/);
+    assert.match(markdown, /\| failed \| no-ship \| 35\/100 \| 1 \| 1 \| Markdown report, JSON report, Security SARIF \|/);
   });
 
   it("renders baseline security finding status and reason", () => {
