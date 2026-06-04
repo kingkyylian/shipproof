@@ -113,6 +113,42 @@ describe("runGitHubProof", () => {
     assert.deepEqual(requests, ["/repos/acme/demo/pulls/42/files?per_page=100&page=1"]);
   });
 
+  it("uses the same report markdown for artifacts, step summary, and PR comment", async () => {
+    const writes = [];
+    const summaries = [];
+    const requests = [];
+
+    await runGitHubProof({
+      packageJson: { scripts: { test: "node --test" } },
+      event: { pull_request: { number: 42 } },
+      env: {
+        GITHUB_REPOSITORY: "acme/demo",
+        INPUT_REPORT_PATH: "shipproof-report.md"
+      },
+      changedFiles: ["src/app/page.tsx"],
+      executeCommand: async () => ({ exitCode: 0, durationMs: 25, stdout: "ok" }),
+      securityScan: async () => [],
+      request: async (path, options = {}) => {
+        requests.push({ path, options });
+
+        if (path.endsWith("/comments?per_page=100")) {
+          return [];
+        }
+
+        return { id: 9 };
+      },
+      writeReport: async (file, markdown) => writes.push({ file, markdown }),
+      appendSummary: async (markdown) => summaries.push(markdown)
+    });
+
+    const commentRequest = requests.find((request) => request.path === "/repos/acme/demo/issues/42/comments");
+    const commentBody = commentRequest.options.body.body;
+
+    assert.equal(writes.length, 1);
+    assert.deepEqual(summaries, [writes[0].markdown]);
+    assert.equal(commentBody, `<!-- shipproof-report -->\n${writes[0].markdown}`);
+  });
+
   it("keeps artifacts and summary when comment permissions are unavailable", async () => {
     const writes = [];
     const summaries = [];
