@@ -227,6 +227,10 @@ describe("runBrowserSmoke", () => {
     assert.equal(check.name, "browser-smoke");
     assert.equal(check.status, "passed");
     assert.equal(check.required, true);
+    assert.deepEqual(check.browserRoutes, [
+      { route: "/login", status: "passed", screenshot: "shipproof-screenshots/login.png" },
+      { route: "/settings", status: "passed", screenshot: "shipproof-screenshots/settings.png" }
+    ]);
     assert.match(check.summary, /2 routes passed/);
     assert.match(check.summary, /shipproof-screenshots/);
   });
@@ -276,6 +280,14 @@ describe("runBrowserSmoke", () => {
     });
 
     assert.equal(check.status, "failed");
+    assert.deepEqual(check.browserRoutes, [
+      {
+        route: "/",
+        status: "failed",
+        screenshot: "shipproof-screenshots/home.png",
+        errors: ["console error: Hydration failed", "network 500: /api/user"]
+      }
+    ]);
     assert.match(check.summary, /\/ failed: console error: Hydration failed/);
   });
 
@@ -364,6 +376,35 @@ describe("startDevServer", () => {
     await assert.rejects(
       promise,
       /Dev server exited before ready at http:\/\/127\.0\.0\.1:4173 \(exit code 1\); logs: shipproof-browser-logs\/server\.stdout\.log, shipproof-browser-logs\/server\.stderr\.log/
+    );
+  });
+
+  it("includes recent server stderr when readiness times out", async () => {
+    const child = createFakeChild();
+    const promise = startDevServer(
+      {
+        devCommand: "npm run dev",
+        baseUrl: "http://127.0.0.1:4173",
+        timeoutMs: 5,
+        logDir: "shipproof-browser-logs"
+      },
+      {
+        cwd: "/repo",
+        spawnImpl: () => child,
+        mkdirImpl: async () => {},
+        writeLog: async () => {},
+        waitForServerImpl: async () => new Promise((_, reject) => {
+          setImmediate(() => {
+            child.stderr.emit("data", Buffer.from("warming up\nfatal boot failure\n"));
+            reject(new Error("timed out after 5ms"));
+          });
+        })
+      }
+    );
+
+    await assert.rejects(
+      promise,
+      /Dev server did not become ready at http:\/\/127\.0\.0\.1:4173: timed out after 5ms; logs: shipproof-browser-logs\/server\.stdout\.log, shipproof-browser-logs\/server\.stderr\.log; last stderr: warming up \| fatal boot failure/
     );
   });
 });

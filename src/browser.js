@@ -132,6 +132,7 @@ export async function runBrowserSmoke({ plan, startServer = startDevServer, chec
       status: failures.length > 0 ? "failed" : "passed",
       durationMs: Math.round(performance.now() - startedAt),
       summary: appendLogSummary(summarizeBrowserResults(routeResults, plan.screenshotDir), server?.logs),
+      browserRoutes: routeResults,
       required: plan.required ?? true
     };
   } catch (error) {
@@ -167,6 +168,10 @@ export async function startDevServer(
     stdout: path.join(logDir, "server.stdout.log"),
     stderr: path.join(logDir, "server.stderr.log")
   };
+  const logTail = {
+    stdout: [],
+    stderr: []
+  };
   const stdoutFile = path.resolve(cwd, logs.stdout);
   const stderrFile = path.resolve(cwd, logs.stderr);
 
@@ -179,9 +184,11 @@ export async function startDevServer(
   });
 
   child.stdout.on("data", (chunk) => {
+    captureLogTail(logTail.stdout, chunk);
     writeLog(stdoutFile, chunk).catch(() => {});
   });
   child.stderr.on("data", (chunk) => {
+    captureLogTail(logTail.stderr, chunk);
     writeLog(stderrFile, chunk).catch(() => {});
   });
 
@@ -197,12 +204,12 @@ export async function startDevServer(
   ]);
 
   if (readyResult.type === "exited") {
-    throw new Error(`Dev server exited before ready at ${readyUrl} (exit code ${readyResult.code ?? 1}); logs: ${logs.stdout}, ${logs.stderr}`);
+    throw new Error(`Dev server exited before ready at ${readyUrl} (exit code ${readyResult.code ?? 1}); logs: ${logs.stdout}, ${logs.stderr}${formatLogTail(logTail)}`);
   }
 
   if (readyResult.type === "not-ready") {
     child.kill("SIGTERM");
-    throw new Error(`Dev server did not become ready at ${readyUrl}: ${readyResult.error.message}; logs: ${logs.stdout}, ${logs.stderr}`);
+    throw new Error(`Dev server did not become ready at ${readyUrl}: ${readyResult.error.message}; logs: ${logs.stdout}, ${logs.stderr}${formatLogTail(logTail)}`);
   }
 
   return {
@@ -318,6 +325,34 @@ function appendLogSummary(summary, logs) {
   }
 
   return `${summary}; server logs: ${logs.stdout}, ${logs.stderr}`;
+}
+
+function captureLogTail(target, chunk) {
+  const lines = chunk
+    .toString()
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  target.push(...lines);
+
+  if (target.length > 20) {
+    target.splice(0, target.length - 20);
+  }
+}
+
+function formatLogTail(logTail) {
+  const parts = [];
+
+  if (logTail.stderr.length > 0) {
+    parts.push(`last stderr: ${logTail.stderr.join(" | ")}`);
+  }
+
+  if (logTail.stdout.length > 0) {
+    parts.push(`last stdout: ${logTail.stdout.join(" | ")}`);
+  }
+
+  return parts.length > 0 ? `; ${parts.join("; ")}` : "";
 }
 
 function isMissingPlaywrightError(error) {
