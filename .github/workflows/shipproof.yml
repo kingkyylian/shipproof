@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./
+      - uses: kingkyylian/shipproof@v0.3.0
         with:
           github-token: ${{ github.token }}
           report-path: shipproof-report.md
