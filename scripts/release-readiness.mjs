@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_VERSION = "0.2.0";
+const DEFAULT_VERSION = "0.3.0";
 
 const STATIC_PACKAGE_FILES = [
   "action.yml",
@@ -104,6 +104,10 @@ async function checkPackageJson(packageJson, version, releaseNotesPath, errors) 
 
   if (packageJson.scripts?.["pack:smoke"] !== "node scripts/pack-smoke.mjs") {
     errors.push('package.json#scripts.pack:smoke must be "node scripts/pack-smoke.mjs".');
+  }
+
+  if (packageJson.scripts?.["publish:dry-run"] !== "npm publish --dry-run") {
+    errors.push('package.json#scripts.publish:dry-run must be "npm publish --dry-run".');
   }
 
   if (packageJson.bin?.shipproof !== "bin/shipproof.js") {
@@ -209,13 +213,14 @@ async function checkReleaseReadinessDoc(root, version, releaseNotesPath, errors)
   const requiredPhrases = [
     `Package version: \`${version}\``,
     "Package is still private: `package.json#private` is `true`",
-    `Released tag: \`${tag}\``,
-    `GitHub release: \`${releaseUrl}\``,
-    "Dogfood run: `26881315207`",
-    "Dogfood PR: `#9`, closed without merge",
+    `Target tag: \`${tag}\``,
+    `Target GitHub release: \`${releaseUrl}\``,
+    "Release approval: required before tag or GitHub release.",
+    "GitHub PR proof: required on the release-candidate PR before merge.",
     "`npm run release:readiness`",
+    "`npm run publish:dry-run`",
     releaseNotesPath,
-    "Npm publishing is intentionally not ready"
+    "Npm publishing remains disabled for this release candidate."
   ];
 
   for (const phrase of requiredPhrases) {
@@ -328,7 +333,7 @@ async function runCli(argv) {
   const parsed = parseArgs(argv);
 
   if (parsed.help) {
-    console.log("Usage: node scripts/release-readiness.mjs [--root <path>] [--version 0.2.0]");
+    console.log("Usage: node scripts/release-readiness.mjs [--root <path>] [--version 0.3.0]");
     return 0;
   }
 

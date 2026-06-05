@@ -1,93 +1,75 @@
-# ShipProof Release Readiness - v0.2.0
+# ShipProof Release Readiness - v0.3.0
 
 Last updated: 2026-06-04
 
-## Released State
+## Release Candidate State
 
-- Package version: `0.2.0`
+- Package version: `0.3.0`
 - Package is still private: `package.json#private` is `true`
-- Existing baseline tag: `v0.1.0`
-- Released tag: `v0.2.0`
-- Release target commit: `9e1f1b11f6f34f677dd445a58f69481523959987`
-- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.2.0`
-- Active docs reference: `kingkyylian/shipproof@v0.2.0`
+- Existing released tag: `v0.2.0`
+- Target tag: `v0.3.0`
+- Target GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.3.0`
+- Active docs reference: `kingkyylian/shipproof@v0.3.0`
+- Release approval: required before tag or GitHub release.
+- GitHub PR proof: required on the release-candidate PR before merge.
 
-The `v0.2.0` GitHub Action release is live. External users can install the documented action reference:
+The `v0.3.0` GitHub Action release is not tagged yet. The release-candidate PR prepares the package metadata, release notes, docs references, and release gate for explicit release approval.
 
 ```yaml
-- uses: kingkyylian/shipproof@v0.2.0
+- uses: kingkyylian/shipproof@v0.3.0
 ```
 
-## Verified Local Gates
+## Required Local Gates
 
-- `npm test`: 96/96 tests passed.
-- `npm run smoke:github-mock`: passed.
-- `npm run release:readiness`: passed.
-- `npm pack --dry-run`: passed, `shipproof@0.2.0`, 26 files, 35.0 kB.
-- `npm run pack:smoke -- --clean`: passed; packs `shipproof-0.2.0.tgz`, runs the packed CLI, and verifies JSON schema `1.0` plus SARIF `2.1.0` with 0 results.
+Run this full gate before release approval:
+
+- Run `npm run release:readiness` before release approval.
+- Run `npm run publish:dry-run` before release approval.
+
+```sh
+npm test
+npm run release:readiness
+npm run pack:smoke -- --clean
+npm pack --dry-run
+npm run publish:dry-run
+npm audit --omit=dev
+git diff --check
+```
+
+The release-candidate PR must also pass the ShipProof GitHub Action proof check before merge.
+
+## Local Verification - 2026-06-04
+
+- `npm test`: 109/109 tests passed.
+- `npm run release:readiness`: passed for `v0.3.0`.
+- `npm run pack:smoke -- --clean`: passed for `shipproof@0.3.0`.
+- `npm pack --dry-run`: passed, `shipproof@0.3.0`, 27 files, 38.2 kB.
+- `npm run publish:dry-run`: passed as a dry run; no package was published.
 - `npm audit --omit=dev`: passed, 0 vulnerabilities.
 - `git diff --check`: passed.
 - ShipProof self-proof: passed, ship, score 88, JSON schema `1.0`, SARIF `2.1.0` with 0 results.
 
-## Release Verification
+## Release Notes
 
-- Release PR: `#8`, merged.
-- Release commit: `9e1f1b11f6f34f677dd445a58f69481523959987`.
-- Release tag: `v0.2.0`.
-- GitHub release: `ShipProof v0.2.0`, non-draft, non-prerelease.
-- Release notes source: `docs/release-notes/v0.2.0.md`.
+Use `docs/release-notes/v0.3.0.md` as the release notes source. The release notes file contains only the `0.3.0` section from `CHANGELOG.md`, not the entire changelog.
 
-Post-release checks:
+## Candidate Scope
 
-- `git ls-remote --tags origin "v0.2.0*"` returned `v0.2.0` at `9e1f1b11f6f34f677dd445a58f69481523959987`.
-- `gh release view v0.2.0 --json tagName,name,url,isDraft,isPrerelease,publishedAt,targetCommitish` confirmed the public release.
-- Dogfood run: `26881315207`.
-- Dogfood PR: `#9`, closed without merge.
-- Dogfood workflow step: `Run kingkyylian/shipproof@v0.2.0`.
-- Dogfood report: passed, ship, score 100.
-- Dogfood JSON artifact: schema `1.0`, status `passed`, decision `ship`, score 100.
-- Dogfood SARIF artifact: version `2.1.0`, results 0.
+This release candidate includes:
 
-## Beta Evidence
-
-Successful external command reports:
-
-- `trustq`: passed, ship, score 88.
-- `admin-web`: passed, ship, score 94.
-- `cvboost`: passed, ship, score 94.
-- `unity-apple-scaffold-agent`: passed, ship, score 94.
-- `handoffkit`: passed, ship, score 94.
-- `tcli-monorepo`: passed, ship, score 100.
-
-Browser evidence:
-
-- `admin-web-browser-advisory`: passed, ship, score 94; advisory `browser-smoke:not_checked` for missing Playwright.
-- `playwright-fixture`: passed, ship, score 100; required `browser-smoke:passed` with real Chromium screenshot.
-
-Failure evidence:
-
-- `portfolio`: failed, no-ship, score 79; failed lint was correctly surfaced.
-
-Full matrix: `docs/beta-test-matrix.md`
-
-## Ongoing Contract Gate
-
-Run this after release-housekeeping changes:
-
-```sh
-npm run release:readiness
-```
-
-The gate verifies package metadata, lockfile version, package file surface, release notes drift, action reference docs, GitHub Action entrypoint wiring, and this post-release evidence checklist.
-
-Use `docs/release-notes/v0.2.0.md` as the release notes source. The release notes file contains only the `0.2.0` section from `CHANGELOG.md`, not the entire changelog.
+- release operation docs and post-release verification helpers;
+- beta feedback and report audit tooling;
+- PR-facing Merge Signal report output;
+- browser smoke route result reporting and recent server log excerpts;
+- Supabase/RLS security-lite heuristics and severity override config;
+- npm publishing readiness docs and a local dry-run gate.
 
 ## Npm Publishing
 
-Npm publishing is intentionally not ready:
+Npm publishing remains disabled for this release candidate.
 
-- package remains private;
-- local npm auth was previously missing;
-- no trusted publishing workflow exists yet.
+The package remains private, no trusted publishing workflow exists, and no npm package should be published as part of the `v0.3.0` GitHub Action release candidate. The local `publish:dry-run` gate exists only to keep the future npm publishing path auditable.
 
-Treat npm as a later release channel. The completed `v0.2.0` release path is the GitHub Action tag and GitHub release.
+## Release Approval Boundary
+
+After this PR is merged, do not create `v0.3.0`, push the tag, create the GitHub release, or publish to npm without explicit approval for that exact action.

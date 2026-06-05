@@ -1,6 +1,6 @@
 {
   "name": "shipproof",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Proof reports for AI-generated code before merge.",
   "license": "MIT",
@@ -30,6 +30,7 @@
     "docs/monorepo.md",
     "docs/release-readiness.md",
     "docs/release-notes/v0.2.0.md",
+    "docs/release-notes/v0.3.0.md",
     "docs/security-lite.md",
     "docs/report-schema.md",
     "docs/live-github-verification.md"

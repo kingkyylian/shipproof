@@ -52,7 +52,7 @@ npm run shipproof -- \
 ## GitHub Action Overrides
 
 ```yaml
-- uses: kingkyylian/shipproof@v0.2.0
+- uses: kingkyylian/shipproof@v0.3.0
   with:
     github-token: ${{ github.token }}
     browser-base-url: http://127.0.0.1:3000
