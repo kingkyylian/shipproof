@@ -159,6 +159,36 @@ describe("release readiness gate", () => {
     }
   });
 
+  it("accepts post-release readiness docs", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const fixture = await createReleaseFixture({
+      releaseReadiness: [
+        "# ShipProof Release Readiness - v0.3.0",
+        "",
+        "- Package version: `0.3.0`",
+        "- Active docs reference: `kingkyylian/shipproof@v0.3.0`",
+        "- Package is still private: `package.json#private` is `true`",
+        "- Released tag: `v0.3.0`",
+        "- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.3.0`",
+        "- Release target commit: `31847cbbe1c8aba1f5e65d42ea983d90ce3c9403`",
+        "- Post-release dogfood: PR #20, run `27021495375`.",
+        "- Run `npm run release:readiness` before release approval.",
+        "- Run `npm run publish:dry-run` before release approval.",
+        "- Use `docs/release-notes/v0.3.0.md` as the release notes source.",
+        "- Npm publishing remains disabled for this release candidate.",
+        ""
+      ].join("\n")
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.deepEqual(result.errors, []);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
   it("detects GitHub Action run entrypoint drift", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({

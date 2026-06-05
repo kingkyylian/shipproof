@@ -2,18 +2,19 @@
 
 Last updated: 2026-06-05
 
-## Release Candidate State
+## Release State
 
 - Package version: `0.3.0`
 - Package is still private: `package.json#private` is `true`
 - Existing released tag: `v0.2.0`
-- Target tag: `v0.3.0`
-- Target GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.3.0`
+- Released tag: `v0.3.0`
+- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.3.0`
+- Release target commit: `31847cbbe1c8aba1f5e65d42ea983d90ce3c9403`
 - Active docs reference: `kingkyylian/shipproof@v0.3.0`
-- Release approval: required before tag or GitHub release.
-- GitHub PR proof: required on the release-candidate PR before merge.
+- Release-readiness refresh PR: #19, proof run `27021220488`, merged at `31847cbbe1c8aba1f5e65d42ea983d90ce3c9403`.
+- Post-release dogfood: PR #20, run `27021495375`, closed without merge after verification.
 
-The `v0.3.0` GitHub Action release is not tagged yet. The release-candidate PR prepares the package metadata, release notes, docs references, and release gate for explicit release approval.
+The `v0.3.0` GitHub Action release is live and was verified through the published action reference.
 
 ```yaml
 - uses: kingkyylian/shipproof@v0.3.0
@@ -21,7 +22,7 @@ The `v0.3.0` GitHub Action release is not tagged yet. The release-candidate PR p
 
 ## Required Local Gates
 
-Run this full gate before release approval:
+The final local gate before release approval was:
 
 - Run `npm run release:readiness` before release approval.
 - Run `npm run publish:dry-run` before release approval.
@@ -36,7 +37,7 @@ npm audit --omit=dev
 git diff --check
 ```
 
-The release-candidate PR must also pass the ShipProof GitHub Action proof check before merge.
+The release-readiness refresh PR #19 also passed the ShipProof GitHub Action proof check before merge.
 
 ## Local Verification - 2026-06-05
 
@@ -49,6 +50,20 @@ The release-candidate PR must also pass the ShipProof GitHub Action proof check 
 - `git diff --check`: passed.
 - ShipProof self-proof: passed, ship, score 94, JSON schema `1.0`, SARIF `2.1.0` with 0 results.
 - Beta evidence matrix: v0.3 targets complete with 11 successful real-repository reports, 2 blocking failure reports, 3 real browser screenshots across 2 current v0.3 browser-smoke reports, 2 monorepo reports, and 1 permission-degraded PR scenario.
+
+## Post-Release Verification - 2026-06-05
+
+- `git ls-remote --tags origin "v0.3.0*"`: `v0.3.0` points to `31847cbbe1c8aba1f5e65d42ea983d90ce3c9403`.
+- `gh release view v0.3.0`: release is non-draft, non-prerelease, published at `2026-06-05T14:40:05Z`, target commitish `main`.
+- `node scripts/post-release-verify.mjs --version 0.3.0`: printed the required remote tag and GitHub release verification commands.
+- Published action dogfood PR #20: `https://github.com/kingkyylian/shipproof/pull/20`.
+- Published action dogfood run: `https://github.com/kingkyylian/shipproof/actions/runs/27021495375`.
+- Dogfood workflow step: `Run kingkyylian/shipproof@v0.3.0`.
+- Dogfood PR comment contains `<!-- shipproof-report -->`.
+- Dogfood Markdown artifact: status `passed`, decision `ship`, score `100/100`.
+- Dogfood JSON artifact: schema `1.0`, status `passed`, decision `ship`, score `100`, security findings `0`.
+- Dogfood SARIF artifact: version `2.1.0`, 1 run, 0 results.
+- Dogfood PR #20 was closed without merge so `main` continues to test the local checkout action in normal PR workflows.
 
 ## Release Notes
 
@@ -69,8 +84,8 @@ This release candidate includes:
 
 Npm publishing remains disabled for this release candidate.
 
-The package remains private, no trusted publishing workflow exists, and no npm package should be published as part of the `v0.3.0` GitHub Action release candidate. The local `publish:dry-run` gate exists only to keep the future npm publishing path auditable.
+The package remains private, no trusted publishing workflow exists, and no npm package was published as part of the `v0.3.0` GitHub Action release. The local `publish:dry-run` gate exists only to keep the future npm publishing path auditable.
 
 ## Release Approval Boundary
 
-After this PR is merged, do not create `v0.3.0`, push the tag, create the GitHub release, or publish to npm without explicit approval for that exact action.
+The explicit `v0.3.0` GitHub release approval was used for the tag and GitHub release above. Do not create future tags, push release tags, create GitHub releases, or publish to npm without explicit approval for that exact action.
