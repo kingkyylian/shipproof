@@ -239,7 +239,7 @@ until a separate user approval explicitly allows npm publishing preparation.
 - Create: `docs/superpowers/plans/YYYY-MM-DD-shipproof-v0.4-adoption-ergonomics.md`
 - No production code in this task.
 
-- [ ] **Step 1: Define one v0.4 theme**
+- [x] **Step 1: Define one v0.4 theme**
 
 Use this goal:
 
@@ -247,7 +247,7 @@ Use this goal:
 Make first-time installation and configuration faster without weakening proof quality.
 ```
 
-- [ ] **Step 2: Split candidate work**
+- [x] **Step 2: Split candidate work**
 
 Include these candidate tasks:
 
@@ -259,7 +259,7 @@ first-run report clarity
 copy-paste install docs
 ```
 
-- [ ] **Step 3: Keep v0.4 separate from v0.3.1**
+- [x] **Step 3: Keep v0.4 separate from v0.3.1**
 
 State explicitly that v0.3.1 is patch-safe stabilization and v0.4 is feature work.
 
