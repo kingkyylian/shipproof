@@ -3,9 +3,21 @@
 ## Current State
 
 - `package.json#private` is `true`.
-- GitHub Action distribution is live at `kingkyylian/shipproof@v0.2.0`.
+- GitHub Action distribution is live at `kingkyylian/shipproof@v0.3.0`.
 - npm publishing is not part of the current release channel.
+- The `v0.3.0` GitHub Action release was dogfooded through the published action reference before npm publishing work started.
 - Release validation already includes `npm pack --dry-run`, `npm run pack:smoke -- --clean`, and a local `publish:dry-run` script.
+- `npm run release:readiness` checks that this publishing plan tracks the current GitHub Action release line before any future publishing approval.
+
+## v0.3.1 Stabilization First
+
+Before opening the dedicated npm publishing PR:
+
+- Run `kingkyylian/shipproof@v0.3.0` on additional real pull requests and record any permission, artifact, browser-smoke, or false-positive issues.
+- Keep `v0.3.1` limited to patch-safe fixes: docs clarity, release gate lifecycle issues, pack smoke hardening, and beta-discovered regressions.
+- Do not remove `private: true` in a stabilization PR.
+- Do not add a publish workflow in a stabilization PR.
+- Keep npm registry publication behind a separate explicit approval.
 
 ## Required Decisions
 

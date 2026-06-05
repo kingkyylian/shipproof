@@ -100,7 +100,7 @@ jobs:
 
 The action reads changed files from the pull request, writes Markdown and JSON reports, appends the Markdown report to the GitHub step summary, and creates or updates one PR comment marked with `<!-- shipproof-report -->`.
 
-`v0.3.0` is the target GitHub Action release line for the current release candidate. For unreleased local development, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
+`v0.3.0` is the current GitHub Action release line. For unreleased local development, use ShipProof from this repository with `uses: ./` after checkout or pin a commit SHA from the public repository.
 
 If GitHub does not grant comment permissions, ShipProof still writes report artifacts and the step summary. In that case the run reports `commentAction: skipped-permission` instead of failing the proof only because a PR comment could not be written.
 
