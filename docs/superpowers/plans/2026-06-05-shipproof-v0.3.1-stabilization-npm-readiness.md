@@ -142,7 +142,7 @@ Expected: both pass.
 - Modify: `scripts/release-readiness.mjs`
 - Modify: `test/release-readiness.test.js`
 
-- [ ] **Step 1: Write version-override test**
+- [x] **Step 1: Write version-override test**
 
 Add a test that calls:
 
@@ -159,7 +159,7 @@ docs/release-notes/v0.3.1.md exists
 docs references remain kingkyylian/shipproof@v0.3.1 for release-candidate docs
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -169,11 +169,11 @@ node --test test/release-readiness.test.js
 
 Expected: FAIL until fixture helpers can produce `0.3.1` release docs.
 
-- [ ] **Step 3: Implement fixture support only**
+- [x] **Step 3: Implement fixture support only**
 
 Refactor test fixture helpers to accept a `version` override. Do not change package version in real files yet.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run:
 
@@ -186,6 +186,8 @@ Expected: PASS.
 - [ ] **Step 5: Draft v0.3.1 scope**
 
 Create `docs/release-notes/v0.3.1.md` only when a real patch change exists. Do not create an empty release-note file.
+
+Deferred in this tranche: no real package version bump or user-facing v0.3.1 release notes were created.
 
 ## Task 4: npm Publishing PR Preflight, No Publish
 
