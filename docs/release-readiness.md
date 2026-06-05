@@ -64,6 +64,7 @@ The release-readiness refresh PR #19 also passed the ShipProof GitHub Action pro
 - Dogfood JSON artifact: schema `1.0`, status `passed`, decision `ship`, score `100`, security findings `0`.
 - Dogfood SARIF artifact: version `2.1.0`, 1 run, 0 results.
 - Dogfood PR #20 was closed without merge so `main` continues to test the local checkout action in normal PR workflows.
+- Post-release observations are tracked in `docs/post-release-observations.md`.
 
 ## Release Notes
 

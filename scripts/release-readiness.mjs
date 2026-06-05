@@ -16,6 +16,8 @@ const STATIC_PACKAGE_FILES = [
   "docs/configuration.md",
   "docs/beta-test-matrix.md",
   "docs/monorepo.md",
+  "docs/npm-publishing.md",
+  "docs/post-release-observations.md",
   "docs/release-readiness.md",
   "docs/security-lite.md",
   "docs/report-schema.md",
@@ -59,6 +61,7 @@ export async function checkReleaseReadiness({ root = process.cwd(), version = DE
   await checkReleaseNotes(resolvedRoot, version, releaseNotesPath, errors);
   await checkActionReferences(resolvedRoot, tag, errors);
   await checkReleaseReadinessDoc(resolvedRoot, version, releaseNotesPath, errors);
+  await checkNpmPublishingDoc(resolvedRoot, tag, errors);
   await checkActionWiring(resolvedRoot, errors);
 
   return {
@@ -243,6 +246,28 @@ async function checkReleaseReadinessDoc(root, version, releaseNotesPath, errors)
   for (const phrase of lifecyclePhrases) {
     if (!text.includes(phrase)) {
       errors.push(`docs/release-readiness.md must include ${phrase}.`);
+    }
+  }
+}
+
+async function checkNpmPublishingDoc(root, tag, errors) {
+  const actionReference = `kingkyylian/shipproof@${tag}`;
+  const text = await readText(root, "docs/npm-publishing.md", errors);
+
+  if (!text) {
+    return;
+  }
+
+  const requiredPhrases = [
+    actionReference,
+    "`package.json#private` is `true`",
+    "`npm publish --dry-run`",
+    "Rollback and Deprecation Plan"
+  ];
+
+  for (const phrase of requiredPhrases) {
+    if (!text.includes(phrase)) {
+      errors.push(`docs/npm-publishing.md must include ${phrase}.`);
     }
   }
 }

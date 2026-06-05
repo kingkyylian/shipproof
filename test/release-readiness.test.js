@@ -112,6 +112,44 @@ describe("release readiness gate", () => {
     }
   });
 
+  it("detects missing publishing support docs from package files", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const packageJson = JSON.parse(createPackageJson());
+    packageJson.files = packageJson.files.filter((file) => {
+      return file !== "docs/npm-publishing.md" && file !== "docs/post-release-observations.md";
+    });
+    const fixture = await createReleaseFixture({
+      packageJson: JSON.stringify(packageJson, null, 2)
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.match(result.errors.join("\n"), /package\.json#files must include docs\/npm-publishing\.md/i);
+      assert.match(result.errors.join("\n"), /package\.json#files must include docs\/post-release-observations\.md/i);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("detects stale npm publishing docs", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const fixture = await createReleaseFixture({
+      npmPublishing: createNpmPublishingDoc().replace(
+        "kingkyylian/shipproof@v0.3.0",
+        "kingkyylian/shipproof@v0.2.0"
+      )
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.match(result.errors.join("\n"), /docs\/npm-publishing\.md.*kingkyylian\/shipproof@v0\.3\.0/i);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
   it("accepts the npm-normalized package bin entrypoint", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({
@@ -264,6 +302,8 @@ async function createReleaseFixture(overrides = {}) {
   await writeFile(path.join(fixture, "docs", "security-lite.md"), createDocWithActionReference());
   await writeFile(path.join(fixture, "docs", "beta-test-matrix.md"), "Full matrix for v0.3.0.\n");
   await writeFile(path.join(fixture, "docs", "monorepo.md"), "Monorepo notes.\n");
+  await writeFile(path.join(fixture, "docs", "npm-publishing.md"), overrides.npmPublishing ?? createNpmPublishingDoc());
+  await writeFile(path.join(fixture, "docs", "post-release-observations.md"), "Post-release observation notes.\n");
   await writeFile(path.join(fixture, "docs", "report-schema.md"), "Report schema notes.\n");
   await writeFile(path.join(fixture, "docs", "live-github-verification.md"), "Live GitHub verification notes.\n");
   await writeFile(
@@ -320,6 +360,8 @@ function createPackageJson(overrides = {}) {
       "docs/configuration.md",
       "docs/beta-test-matrix.md",
       "docs/monorepo.md",
+      "docs/npm-publishing.md",
+      "docs/post-release-observations.md",
       "docs/release-readiness.md",
       releaseNotesPath,
       "docs/security-lite.md",
@@ -371,6 +413,22 @@ function createPackageLock({ version }) {
 
 function createDocWithActionReference() {
   return "- uses: kingkyylian/shipproof@v0.3.0\n";
+}
+
+function createNpmPublishingDoc() {
+  return [
+    "# ShipProof npm Publishing Plan",
+    "",
+    "- GitHub Action distribution is live at `kingkyylian/shipproof@v0.3.0`.",
+    "- `package.json#private` is `true`.",
+    "- npm publishing remains out of scope until trusted publishing is prepared.",
+    "- Require `npm publish --dry-run` before publish.",
+    "",
+    "## Rollback and Deprecation Plan",
+    "",
+    "- Publish a fixed patch instead of deleting history.",
+    ""
+  ].join("\n");
 }
 
 function createActionYaml() {
