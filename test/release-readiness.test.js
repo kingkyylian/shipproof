@@ -89,6 +89,25 @@ describe("release readiness gate", () => {
     }
   });
 
+  it("accepts the npm-normalized package bin entrypoint", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const fixture = await createReleaseFixture({
+      packageJson: createPackageJson({
+        bin: {
+          shipproof: "bin/shipproof.js"
+        }
+      })
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.deepEqual(result.errors, []);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
   it("detects stale pre-release readiness docs", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({
@@ -227,7 +246,7 @@ function createPackageJson(overrides = {}) {
     private: true,
     type: "module",
     bin: {
-      shipproof: "./bin/shipproof.js"
+      shipproof: "bin/shipproof.js"
     },
     files: [
       "action.yml",
