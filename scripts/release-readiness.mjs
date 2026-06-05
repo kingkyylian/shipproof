@@ -210,20 +210,37 @@ async function checkReleaseReadinessDoc(root, version, releaseNotesPath, errors)
     return;
   }
 
-  const requiredPhrases = [
+  const corePhrases = [
     `Package version: \`${version}\``,
     "Package is still private: `package.json#private` is `true`",
-    `Target tag: \`${tag}\``,
-    `Target GitHub release: \`${releaseUrl}\``,
-    "Release approval: required before tag or GitHub release.",
-    "GitHub PR proof: required on the release-candidate PR before merge.",
     "`npm run release:readiness`",
     "`npm run publish:dry-run`",
     releaseNotesPath,
     "Npm publishing remains disabled for this release candidate."
   ];
 
-  for (const phrase of requiredPhrases) {
+  for (const phrase of corePhrases) {
+    if (!text.includes(phrase)) {
+      errors.push(`docs/release-readiness.md must include ${phrase}.`);
+    }
+  }
+
+  const preReleasePhrases = [
+    `Target tag: \`${tag}\``,
+    `Target GitHub release: \`${releaseUrl}\``,
+    "Release approval: required before tag or GitHub release.",
+    "GitHub PR proof: required on the release-candidate PR before merge."
+  ];
+  const postReleasePhrases = [
+    `Released tag: \`${tag}\``,
+    `GitHub release: \`${releaseUrl}\``,
+    "Release target commit:",
+    "Post-release dogfood:"
+  ];
+  const hasPostReleaseSignal = text.includes(`Released tag: \`${tag}\``) || text.includes("Post-release dogfood:");
+  const lifecyclePhrases = hasPostReleaseSignal ? postReleasePhrases : preReleasePhrases;
+
+  for (const phrase of lifecyclePhrases) {
     if (!text.includes(phrase)) {
       errors.push(`docs/release-readiness.md must include ${phrase}.`);
     }
