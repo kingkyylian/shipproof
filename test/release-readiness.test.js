@@ -9,20 +9,20 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const releaseModuleUrl = pathToFileURL(path.join(repoRoot, "scripts", "release-readiness.mjs")).href;
 
 describe("release readiness gate", () => {
-  it("passes the current v0.2.0 release contract", async () => {
+  it("passes the current v0.3.0 release contract", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
 
     const result = await checkReleaseReadiness({ root: repoRoot });
 
     assert.deepEqual(result.errors, []);
-    assert.equal(result.version, "0.2.0");
+    assert.equal(result.version, "0.3.0");
   });
 
   it("detects release notes that drift from the changelog section", async () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({
       releaseNotes: [
-        "# ShipProof v0.2.0",
+        "# ShipProof v0.3.0",
         "",
         "### Added",
         "",
@@ -64,7 +64,7 @@ describe("release readiness gate", () => {
     try {
       const result = await checkReleaseReadiness({ root: fixture });
 
-      assert.match(result.errors.join("\n"), /package-lock\.json.*0\.2\.0/i);
+      assert.match(result.errors.join("\n"), /package-lock\.json.*0\.3\.0/i);
     } finally {
       await rm(fixture, { recursive: true, force: true });
     }
@@ -84,6 +84,29 @@ describe("release readiness gate", () => {
       const result = await checkReleaseReadiness({ root: fixture });
 
       assert.match(result.errors.join("\n"), /bin\.shipproof.*bin\/shipproof\.js/i);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("detects missing npm publish dry-run gate", async () => {
+    const { checkReleaseReadiness } = await import(releaseModuleUrl);
+    const fixture = await createReleaseFixture({
+      packageJson: createPackageJson({
+        scripts: {
+          test: "node --test",
+          "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
+          "pack:smoke": "node scripts/pack-smoke.mjs",
+          "release:readiness": "node scripts/release-readiness.mjs",
+          shipproof: "node ./bin/shipproof.js"
+        }
+      })
+    });
+
+    try {
+      const result = await checkReleaseReadiness({ root: fixture });
+
+      assert.match(result.errors.join("\n"), /publish:dry-run.*npm publish --dry-run/i);
     } finally {
       await rm(fixture, { recursive: true, force: true });
     }
@@ -112,16 +135,16 @@ describe("release readiness gate", () => {
     const { checkReleaseReadiness } = await import(releaseModuleUrl);
     const fixture = await createReleaseFixture({
       releaseReadiness: [
-        "# ShipProof Release Readiness - v0.2.0",
+        "# ShipProof Release Readiness - v0.3.0",
         "",
-        "- Package version: `0.2.0`",
-        "- Active docs reference: `kingkyylian/shipproof@v0.2.0`",
+        "- Package version: `0.3.0`",
+        "- Active docs reference: `kingkyylian/shipproof@v0.3.0`",
         "- Package is still private: `package.json#private` is `true`",
-        "- Missing tag: `v0.2.0`",
-        "- Missing GitHub release: `v0.2.0`",
+        "- Missing target tag: `v0.3.0`",
+        "- Missing target GitHub release: `v0.3.0`",
         "- Run `npm run release:readiness` before approval.",
-        "- Use `docs/release-notes/v0.2.0.md` as the release notes source.",
-        "- Npm publishing is intentionally not ready.",
+        "- Use `docs/release-notes/v0.3.0.md` as the release notes source.",
+        "- Npm publishing remains disabled for this release candidate.",
         ""
       ].join("\n")
     });
@@ -129,8 +152,8 @@ describe("release readiness gate", () => {
     try {
       const result = await checkReleaseReadiness({ root: fixture });
 
-      assert.match(result.errors.join("\n"), /Released tag.*v0\.2\.0/i);
-      assert.match(result.errors.join("\n"), /Dogfood run.*26881315207/i);
+      assert.match(result.errors.join("\n"), /Target tag.*v0\.3\.0/i);
+      assert.match(result.errors.join("\n"), /GitHub PR proof.*release-candidate PR/i);
     } finally {
       await rm(fixture, { recursive: true, force: true });
     }
@@ -154,7 +177,7 @@ describe("release readiness gate", () => {
 
 async function createReleaseFixture(overrides = {}) {
   const fixture = await mkdtemp(path.join(os.tmpdir(), "shipproof-release-readiness-"));
-  const version = "0.2.0";
+  const version = "0.3.0";
   const releaseNotesPath = path.join("docs", "release-notes", `v${version}.md`);
   const changelog = [
     "# Changelog",
@@ -162,6 +185,12 @@ async function createReleaseFixture(overrides = {}) {
     "## Unreleased",
     "",
     "No changes yet.",
+    "",
+    "## 0.3.0 - 2026-06-04",
+    "",
+    "### Added",
+    "",
+    "- A correct release note.",
     "",
     "## 0.2.0 - 2026-06-02",
     "",
@@ -177,7 +206,7 @@ async function createReleaseFixture(overrides = {}) {
     ""
   ].join("\n");
   const releaseNotes = [
-    "# ShipProof v0.2.0",
+    "# ShipProof v0.3.0",
     "",
     "### Added",
     "",
@@ -203,7 +232,7 @@ async function createReleaseFixture(overrides = {}) {
   await writeFile(path.join(fixture, "docs", "browser-smoke.md"), createDocWithActionReference());
   await writeFile(path.join(fixture, "docs", "configuration.md"), createDocWithActionReference());
   await writeFile(path.join(fixture, "docs", "security-lite.md"), createDocWithActionReference());
-  await writeFile(path.join(fixture, "docs", "beta-test-matrix.md"), "Full matrix for v0.2.0.\n");
+  await writeFile(path.join(fixture, "docs", "beta-test-matrix.md"), "Full matrix for v0.3.0.\n");
   await writeFile(path.join(fixture, "docs", "monorepo.md"), "Monorepo notes.\n");
   await writeFile(path.join(fixture, "docs", "report-schema.md"), "Report schema notes.\n");
   await writeFile(path.join(fixture, "docs", "live-github-verification.md"), "Live GitHub verification notes.\n");
@@ -221,28 +250,29 @@ async function createReleaseFixture(overrides = {}) {
 
 function createReleaseReadinessDoc() {
   return [
-    "# ShipProof Release Readiness - v0.2.0",
+    "# ShipProof Release Readiness - v0.3.0",
     "",
-    "- Package version: `0.2.0`",
-    "- Active docs reference: `kingkyylian/shipproof@v0.2.0`",
+    "- Package version: `0.3.0`",
+    "- Active docs reference: `kingkyylian/shipproof@v0.3.0`",
     "- Package is still private: `package.json#private` is `true`",
-    "- Released tag: `v0.2.0`",
-    "- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.2.0`",
-    "- Dogfood run: `26881315207`",
-    "- Dogfood PR: `#9`, closed without merge",
-    "- Run `npm run release:readiness` after release housekeeping changes.",
-    "- Use `docs/release-notes/v0.2.0.md` as the release notes source.",
-    "- Npm publishing is intentionally not ready.",
+    "- Target tag: `v0.3.0`",
+    "- Target GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.3.0`",
+    "- Release approval: required before tag or GitHub release.",
+    "- GitHub PR proof: required on the release-candidate PR before merge.",
+    "- Run `npm run release:readiness` before release approval.",
+    "- Run `npm run publish:dry-run` before release approval.",
+    "- Use `docs/release-notes/v0.3.0.md` as the release notes source.",
+    "- Npm publishing remains disabled for this release candidate.",
     ""
   ].join("\n");
 }
 
 function createPackageJson(overrides = {}) {
-  const releaseNotesPath = overrides.releaseNotesPath ?? path.join("docs", "release-notes", "v0.2.0.md");
+  const releaseNotesPath = overrides.releaseNotesPath ?? path.join("docs", "release-notes", "v0.3.0.md");
   const { releaseNotesPath: _releaseNotesPath, ...packageOverrides } = overrides;
   const packageJson = {
     name: "shipproof",
-    version: "0.2.0",
+    version: "0.3.0",
     private: true,
     type: "module",
     bin: {
@@ -270,6 +300,7 @@ function createPackageJson(overrides = {}) {
       test: "node --test",
       "smoke:github-mock": "node scripts/mock-github-smoke.mjs",
       "pack:smoke": "node scripts/pack-smoke.mjs",
+      "publish:dry-run": "npm publish --dry-run",
       "release:readiness": "node scripts/release-readiness.mjs",
       shipproof: "node ./bin/shipproof.js"
     }
@@ -309,7 +340,7 @@ function createPackageLock({ version }) {
 }
 
 function createDocWithActionReference() {
-  return "- uses: kingkyylian/shipproof@v0.2.0\n";
+  return "- uses: kingkyylian/shipproof@v0.3.0\n";
 }
 
 function createActionYaml() {

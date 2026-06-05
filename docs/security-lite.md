@@ -102,7 +102,7 @@ Supported severity values are `high`, `medium`, and `low`. Invalid override valu
 GitHub Action mode writes SARIF security-lite results to `shipproof-security.sarif` by default. Override it with:
 
 ```yaml
-- uses: kingkyylian/shipproof@v0.2.0
+- uses: kingkyylian/shipproof@v0.3.0
   with:
     github-token: ${{ github.token }}
     security-sarif-path: artifacts/shipproof-security.sarif

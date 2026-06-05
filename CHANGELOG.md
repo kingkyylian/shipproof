@@ -8,6 +8,29 @@ The format follows Keep a Changelog style categories, and this project uses sema
 
 No changes yet.
 
+## 0.3.0 - 2026-06-04
+
+### Added
+
+- Release operations docs and a post-release verification helper for tag and GitHub release audits.
+- Beta feedback contract, v0.3 evidence targets, and a report audit helper for proof JSON summaries.
+- Merge Signal summary in ShipProof reports for faster pull request scanning.
+- Browser smoke route results in JSON reports.
+- Security-lite Supabase SQL heuristics for public storage buckets, disabled RLS, and broad `anon` writes.
+- Security severity overrides in `shipproof.config.json`.
+- npm publishing readiness plan and a local `publish:dry-run` gate.
+
+### Changed
+
+- Browser smoke startup failures now include recent dev-server stdout and stderr excerpts.
+- Release readiness now targets the `v0.3.0` release-candidate contract.
+- Package bin metadata now uses npm's normalized `bin/shipproof.js` form.
+- GitHub Action docs now point new installs at the `v0.3.0` target tag.
+
+### Fixed
+
+- Security-lite Supabase SQL heuristics no longer flag SQL examples embedded in non-SQL files.
+
 ## 0.2.0 - 2026-06-02
 
 ### Added
