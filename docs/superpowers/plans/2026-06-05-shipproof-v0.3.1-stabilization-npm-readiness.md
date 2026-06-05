@@ -196,7 +196,7 @@ Deferred in this tranche: no real package version bump or user-facing v0.3.1 rel
 - Create only after explicit publish-readiness approval: `.github/workflows/npm-publish.yml`
 - Modify only in dedicated publishing PR: `package.json`
 
-- [ ] **Step 1: Confirm blockers remain explicit**
+- [x] **Step 1: Confirm blockers remain explicit**
 
 Run:
 
@@ -213,7 +213,7 @@ Expected:
 }
 ```
 
-- [ ] **Step 2: Run local dry-runs**
+- [x] **Step 2: Run local dry-runs**
 
 Run:
 
@@ -225,7 +225,7 @@ npm run publish:dry-run
 
 Expected: all pass; `npm run publish:dry-run` prints `+ shipproof@0.3.0` and does not publish.
 
-- [ ] **Step 3: Do not remove privacy**
+- [x] **Step 3: Do not remove privacy**
 
 Do not edit:
 
@@ -234,6 +234,13 @@ Do not edit:
 ```
 
 until a separate user approval explicitly allows npm publishing preparation.
+
+Execution evidence, 2026-06-05 after PR #24:
+
+- `package.json`: `{"private":true,"version":"0.3.0"}`.
+- `npm run pack:smoke -- --clean`: passed for `shipproof@0.3.0`.
+- `npm pack --dry-run --json`: passed for `shipproof@0.3.0`, 29 files, 41.1 kB.
+- `npm run publish:dry-run`: completed as dry-run and printed `+ shipproof@0.3.0`; no npm package was published.
 
 ## Task 5: v0.4 Adoption Ergonomics Planning
 
