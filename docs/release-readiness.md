@@ -1,6 +1,6 @@
 # ShipProof Release Readiness - v0.3.0
 
-Last updated: 2026-06-04
+Last updated: 2026-06-05
 
 ## Release Candidate State
 
@@ -38,7 +38,7 @@ git diff --check
 
 The release-candidate PR must also pass the ShipProof GitHub Action proof check before merge.
 
-## Local Verification - 2026-06-04
+## Local Verification - 2026-06-05
 
 - `npm test`: 109/109 tests passed.
 - `npm run release:readiness`: passed for `v0.3.0`.
@@ -47,7 +47,7 @@ The release-candidate PR must also pass the ShipProof GitHub Action proof check 
 - `npm run publish:dry-run`: passed as a dry run; no package was published.
 - `npm audit --omit=dev`: passed, 0 vulnerabilities.
 - `git diff --check`: passed.
-- ShipProof self-proof: passed, ship, score 88, JSON schema `1.0`, SARIF `2.1.0` with 0 results.
+- ShipProof self-proof: passed, ship, score 94, JSON schema `1.0`, SARIF `2.1.0` with 0 results.
 - Beta evidence matrix: v0.3 targets complete with 11 successful real-repository reports, 2 blocking failure reports, 3 real browser screenshots across 2 current v0.3 browser-smoke reports, 2 monorepo reports, and 1 permission-degraded PR scenario.
 
 ## Release Notes
