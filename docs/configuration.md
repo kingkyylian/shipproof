@@ -76,7 +76,7 @@ npm run shipproof -- --config shipproof.config.json --changed src/core.js --no-b
 Use `config-path` to pass the same config into GitHub mode:
 
 ```yaml
-- uses: kingkyylian/shipproof@v0.3.0
+- uses: kingkyylian/shipproof@v0.4.0
   with:
     github-token: ${{ github.token }}
     config-path: shipproof.config.json

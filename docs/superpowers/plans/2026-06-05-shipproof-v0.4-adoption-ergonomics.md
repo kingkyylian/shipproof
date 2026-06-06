@@ -280,7 +280,7 @@ Expected: both pass.
 - Modify: `scripts/release-readiness.mjs`
 - Modify: `test/release-readiness.test.js`
 
-- [ ] **Step 1: Do not start until v0.4 features are merged**
+- [x] **Step 1: Do not start until v0.4 features are merged**
 
 Run:
 
@@ -290,11 +290,11 @@ git status --short --branch
 
 Expected: clean `main...origin/main` after v0.4 feature PRs merge.
 
-- [ ] **Step 2: Prepare release-candidate metadata**
+- [x] **Step 2: Prepare release-candidate metadata**
 
 Update package metadata to `0.4.0`, generate `docs/release-notes/v0.4.0.md` from `CHANGELOG.md`, and update docs action references to `kingkyylian/shipproof@v0.4.0`.
 
-- [ ] **Step 3: Run final gates**
+- [x] **Step 3: Run final gates**
 
 Run:
 
@@ -310,3 +310,14 @@ git diff --check
 Expected: all pass.
 
 Do not tag `v0.4.0`, create a GitHub release, or publish to npm without explicit approval for that exact action.
+
+Execution evidence, 2026-06-06:
+
+- `npm test`: 119/119 passed.
+- `npm run release:readiness`: passed for `v0.4.0`.
+- `npm run pack:smoke -- --clean`: passed for `shipproof@0.4.0`.
+- `npm pack --dry-run --json`: passed for `shipproof@0.4.0`, 31 files, 41.5 kB.
+- `npm run publish:dry-run`: completed as dry-run and printed `+ shipproof@0.4.0`; no npm package was published.
+- `npm audit --omit=dev`: passed, 0 vulnerabilities.
+- `git diff --check`: passed.
+- ShipProof self-proof: passed, ship, score 88, security findings 0.

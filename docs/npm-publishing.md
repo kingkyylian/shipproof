@@ -3,20 +3,21 @@
 ## Current State
 
 - `package.json#private` is `true`.
-- GitHub Action distribution is live at `kingkyylian/shipproof@v0.3.0`.
+- GitHub Action release-candidate distribution is tracked as `kingkyylian/shipproof@v0.4.0`.
+- The live GitHub Action release remains `kingkyylian/shipproof@v0.3.0` until `v0.4.0` receives explicit tag and release approval.
 - npm publishing is not part of the current release channel.
 - The `v0.3.0` GitHub Action release was dogfooded through the published action reference before npm publishing work started.
 - Release validation already includes `npm pack --dry-run`, `npm run pack:smoke -- --clean`, and a local `publish:dry-run` script.
 - `npm run release:readiness` checks that this publishing plan tracks the current GitHub Action release line before any future publishing approval.
 
-## v0.3.1 Stabilization First
+## v0.4.0 GitHub Action First
 
 Before opening the dedicated npm publishing PR:
 
-- Run `kingkyylian/shipproof@v0.3.0` on additional real pull requests and record any permission, artifact, browser-smoke, or false-positive issues.
-- Keep `v0.3.1` limited to patch-safe fixes: docs clarity, release gate lifecycle issues, pack smoke hardening, and beta-discovered regressions.
-- Do not remove `private: true` in a stabilization PR.
-- Do not add a publish workflow in a stabilization PR.
+- Land the `v0.4.0` GitHub Action release candidate through the normal proof and release approval path.
+- Run `kingkyylian/shipproof@v0.4.0` on at least one real pull request after the tag is live and record any permission, artifact, browser-smoke, init, config-validation, or false-positive issues.
+- Do not remove `private: true` in the GitHub Action release-candidate PR.
+- Do not add a publish workflow in the GitHub Action release-candidate PR.
 - Keep npm registry publication behind a separate explicit approval.
 
 ## Required Decisions
@@ -25,7 +26,7 @@ Before opening the dedicated npm publishing PR:
 - Keep GitHub Action release and npm package release on the same version.
 - Require `npm publish --dry-run` before publish.
 - Require post-publish smoke with `npx shipproof --help` or `npm exec shipproof -- --help`.
-- Decide whether the first npm version is the next normal release or a pre-release such as `0.3.0-beta.0`.
+- Decide whether the first npm version is the next normal release or a pre-release such as `0.4.0-beta.0`.
 - Document the npm package access level before removing `private: true`.
 
 ## Proposed Release Shape

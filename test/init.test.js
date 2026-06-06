@@ -18,7 +18,7 @@ describe("shipproof init", () => {
         "shipproof.config.json"
       ]);
       assert.equal(plan.written.length, 0);
-      assert.match(plan.files[0].contents, /uses: kingkyylian\/shipproof@v0\.3\.0/);
+      assert.match(plan.files[0].contents, /uses: kingkyylian\/shipproof@v0\.4\.0/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -51,7 +51,7 @@ describe("shipproof init", () => {
       ]);
       assert.match(
         await readFile(path.join(root, ".github", "workflows", "shipproof.yml"), "utf8"),
-        /uses: kingkyylian\/shipproof@v0\.3\.0/
+        /uses: kingkyylian\/shipproof@v0\.4\.0/
       );
       assert.match(
         await readFile(path.join(root, "shipproof.config.json"), "utf8"),

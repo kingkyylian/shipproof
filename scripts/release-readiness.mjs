@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_VERSION = "0.3.0";
+const DEFAULT_VERSION = "0.4.0";
 
 const STATIC_PACKAGE_FILES = [
   "action.yml",
@@ -375,7 +375,7 @@ async function runCli(argv) {
   const parsed = parseArgs(argv);
 
   if (parsed.help) {
-    console.log("Usage: node scripts/release-readiness.mjs [--root <path>] [--version 0.3.0]");
+    console.log("Usage: node scripts/release-readiness.mjs [--root <path>] [--version 0.4.0]");
     return 0;
   }
 
