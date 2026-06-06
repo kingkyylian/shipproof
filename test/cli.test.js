@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,23 @@ import { describe, it } from "node:test";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("shipproof CLI", () => {
+  it("prints the init dry-run plan without writing files", async () => {
+    const fixture = await mkdtemp(path.join(os.tmpdir(), "shipproof-cli-"));
+
+    try {
+      const result = await runCli(["init", "--dry-run"], fixture);
+
+      assert.equal(result.code, 0, result.stderr);
+      assert.match(result.stdout, /ShipProof init dry run:/);
+      assert.match(result.stdout, /\.github\/workflows\/shipproof\.yml/);
+      assert.match(result.stdout, /shipproof\.config\.json/);
+      assert.equal(await pathExists(path.join(fixture, ".github", "workflows", "shipproof.yml")), false);
+      assert.equal(await pathExists(path.join(fixture, "shipproof.config.json")), false);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
+
   it("honors local browser artifact path flags when config defaults are loaded", async () => {
     const fixture = await mkdtemp(path.join(os.tmpdir(), "shipproof-cli-"));
 
@@ -92,4 +109,13 @@ function runCli(args, cwd) {
       resolve({ code, stdout, stderr });
     });
   });
+}
+
+async function pathExists(filePath) {
+  try {
+    await stat(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }

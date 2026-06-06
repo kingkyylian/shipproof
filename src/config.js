@@ -78,6 +78,18 @@ export function resolveShipProofConfig(config = {}) {
   };
 }
 
+export function validateShipProofConfig(config = {}) {
+  const errors = [];
+  const waitUntil = config.browser?.waitUntil;
+  const validWaitUntilValues = ["load", "domcontentloaded", "networkidle", "commit"];
+
+  if (waitUntil !== undefined && !validWaitUntilValues.includes(waitUntil)) {
+    errors.push("browser.waitUntil must be one of load, domcontentloaded, networkidle, commit.");
+  }
+
+  return { errors };
+}
+
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -88,5 +100,12 @@ export async function loadShipProofConfig({ filePath, readFile } = {}) {
   }
 
   const content = await readFile(filePath, "utf8");
-  return resolveShipProofConfig(JSON.parse(content));
+  const config = JSON.parse(content);
+  const validation = validateShipProofConfig(config);
+
+  if (validation.errors.length > 0) {
+    throw new Error(validation.errors.join("\n"));
+  }
+
+  return resolveShipProofConfig(config);
 }

@@ -33,7 +33,7 @@
 - Modify: `bin/shipproof.js`
 - Create: `src/init.js`
 
-- [ ] **Step 1: Write the failing dry-run test**
+- [x] **Step 1: Write the failing dry-run test**
 
 ```js
 import assert from "node:assert/strict";
@@ -63,7 +63,7 @@ describe("shipproof init", () => {
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -73,7 +73,7 @@ node --test test/init.test.js
 
 Expected: FAIL because `src/init.js` does not exist.
 
-- [ ] **Step 3: Implement minimal `createInitPlan`**
+- [x] **Step 3: Implement minimal `createInitPlan`**
 
 Create `src/init.js`:
 
@@ -118,7 +118,7 @@ export async function createInitPlan({ root, dryRun = false }) {
 }
 ```
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -128,13 +128,15 @@ node --test test/init.test.js
 
 Expected: PASS.
 
+Execution note: also added CLI coverage and dispatcher support for `shipproof init --dry-run` so the planned command is usable from `bin/shipproof.js`, not only through `createInitPlan`.
+
 ## Task 2: Prevent Overwrites
 
 **Files:**
 - Modify: `test/init.test.js`
 - Modify: `src/init.js`
 
-- [ ] **Step 1: Write failing overwrite test**
+- [x] **Step 1: Write failing overwrite test**
 
 ```js
 it("refuses to overwrite existing workflow files", async () => {
@@ -153,7 +155,7 @@ it("refuses to overwrite existing workflow files", async () => {
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -163,11 +165,11 @@ node --test test/init.test.js
 
 Expected: FAIL because overwrites are not checked.
 
-- [ ] **Step 3: Add existence checks**
+- [x] **Step 3: Add existence checks**
 
 Use `fs.promises.stat` for each target path. Throw before writing any file when a target exists.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -183,7 +185,7 @@ Expected: PASS.
 - Modify: `src/config.js`
 - Modify: `test/config.test.js`
 
-- [ ] **Step 1: Write failing validation test**
+- [x] **Step 1: Write failing validation test**
 
 ```js
 it("rejects invalid browser waitUntil values", async () => {
@@ -199,7 +201,7 @@ it("rejects invalid browser waitUntil values", async () => {
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -209,11 +211,11 @@ node --test test/config.test.js
 
 Expected: FAIL because `validateShipProofConfig` does not exist.
 
-- [ ] **Step 3: Implement validation**
+- [x] **Step 3: Implement validation**
 
 Export `validateShipProofConfig(config)` from `src/config.js`. It returns `{ errors: [] }` for valid config and never mutates input.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run:
 
@@ -223,13 +225,15 @@ node --test test/config.test.js
 
 Expected: PASS.
 
+Execution note: `loadShipProofConfig` now calls the validator so invalid config files fail before proof checks run.
+
 ## Task 4: README First-Run Path
 
 **Files:**
 - Modify: `README.md`
 - Modify: `docs/configuration.md`
 
-- [ ] **Step 1: Add copy-paste install section**
+- [x] **Step 1: Add copy-paste install section**
 
 Add this under `## GitHub Action`:
 
@@ -245,7 +249,7 @@ Use the published action in pull request workflows:
 ```
 ````
 
-- [ ] **Step 2: Add config validation docs**
+- [x] **Step 2: Add config validation docs**
 
 Document valid browser `waitUntil` values:
 
@@ -256,7 +260,7 @@ networkidle
 commit
 ```
 
-- [ ] **Step 3: Verify docs**
+- [x] **Step 3: Verify docs**
 
 Run:
 
