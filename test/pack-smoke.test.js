@@ -13,7 +13,7 @@ describe("pack smoke", () => {
     const result = await runPackSmoke({ root: repoRoot, keepTemp: false });
 
     assert.equal(result.packageName, "shipproof");
-    assert.equal(result.packageVersion, "0.3.0");
+    assert.equal(result.packageVersion, "0.4.0");
     assert.equal(result.report.status, "passed");
     assert.equal(result.report.decision, "ship");
     assert.equal(result.report.score, 100);
