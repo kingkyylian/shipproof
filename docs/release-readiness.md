@@ -6,14 +6,14 @@ Last updated: 2026-06-06
 
 - Package version: `0.4.0`
 - Package is still private: `package.json#private` is `true`
-- Existing released tag: `v0.3.0`
-- Target tag: `v0.4.0`
-- Target GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.4.0`
+- Released tag: `v0.4.0`
+- GitHub release: `https://github.com/kingkyylian/shipproof/releases/tag/v0.4.0`
+- Release target commit: `494167a648e96d26e292a4033604c1a7d59f1fcc`
 - Active docs reference: `kingkyylian/shipproof@v0.4.0`
-- Release approval: required before tag or GitHub release.
-- GitHub PR proof: required on the release-candidate PR before merge.
+- Post-release dogfood: PR #28, run `27069150898`.
+- Dogfood artifact evidence: Markdown, JSON, and SARIF artifacts were downloaded and parsed; JSON schema `1.0`, status `passed`, decision `ship`, score `100`; SARIF `2.1.0` results 0.
 
-The `v0.4.0` GitHub Action release is not live yet. This document prepares the release-candidate contract only.
+The `v0.4.0` GitHub Action release is live and was dogfooded through the published action reference.
 
 ```yaml
 - uses: kingkyylian/shipproof@v0.4.0
@@ -21,7 +21,7 @@ The `v0.4.0` GitHub Action release is not live yet. This document prepares the r
 
 ## Required Local Gates
 
-Run these before release approval:
+Run these before release approval and before any future release refresh:
 
 - `npm test`
 - `npm run release:readiness`
@@ -60,4 +60,4 @@ The package remains private, no trusted publishing workflow exists, and no npm p
 
 ## Release Approval Boundary
 
-Do not create `v0.4.0`, push release tags, create GitHub releases, or publish to npm without explicit approval for that exact action.
+Do not publish to npm without a separate explicit npm publishing approval. Future tags, GitHub releases, or release-line changes still require explicit approval for that exact action.
