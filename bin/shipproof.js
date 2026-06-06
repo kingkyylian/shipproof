@@ -10,6 +10,7 @@ import { createBrowserSmokePlan, runBrowserSmoke } from "../src/browser.js";
 import { loadShipProofConfig } from "../src/config.js";
 import { attachReportArtifacts, runProof } from "../src/core.js";
 import { createGitHubRequest } from "../src/github.js";
+import { createInitPlan } from "../src/init.js";
 import { createSecuritySarif, scanSecurityFindingsFromDisk } from "../src/security.js";
 import { loadWorkspaceContext } from "../src/workspace.js";
 
@@ -18,11 +19,12 @@ const args = process.argv.slice(2);
 
 if (args.includes("--help") || args.includes("-h")) {
   console.log([
-    "Usage: shipproof [run|github] [--changed <file[,file...]>]",
+    "Usage: shipproof [run|github|init] [--changed <file[,file...]>]",
     "",
     "Runs proof checks discovered from package.json and prints a merge-facing markdown report.",
     "Local mode: if --changed is omitted, ShipProof reads changed files from git diff --name-only HEAD.",
     "GitHub mode: reads PR files from the GitHub API and writes shipproof-report.md.",
+    "Init mode: writes a starter GitHub Action workflow and ShipProof config.",
     "",
     "Browser options:",
     "  --no-browser              Disable browser smoke checks.",
@@ -41,6 +43,19 @@ if (args.includes("--help") || args.includes("-h")) {
 }
 
 const mode = args[0] === "github" ? "github" : "local";
+
+if (args[0] === "init") {
+  args.shift();
+  try {
+    const plan = await createInitPlan({ root: cwd, dryRun: args.includes("--dry-run") });
+
+    console.log(formatInitOutput(plan, args.includes("--dry-run")));
+    process.exit(0);
+  } catch (error) {
+    console.error(`ShipProof init failed: ${error.message}`);
+    process.exit(2);
+  }
+}
 
 if (args[0] === "run" || args[0] === "github") {
   args.shift();
@@ -68,6 +83,13 @@ function formatCliOutput(report, values) {
   }
 
   return report.markdown;
+}
+
+function formatInitOutput(plan, dryRun) {
+  return [
+    dryRun ? "ShipProof init dry run:" : "ShipProof initialized:",
+    ...plan.files.map((file) => `- ${file.path}`)
+  ].join("\n");
 }
 
 async function runLocalMode(values) {

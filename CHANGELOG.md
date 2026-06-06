@@ -6,7 +6,10 @@ The format follows Keep a Changelog style categories, and this project uses sema
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- `shipproof init --dry-run` now previews starter workflow and config files for first-time setup.
+- Config loading now rejects invalid `browser.waitUntil` values before running proof checks.
 
 ## 0.3.0 - 2026-06-04
 

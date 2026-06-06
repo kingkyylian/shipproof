@@ -41,6 +41,16 @@ git diff --name-only HEAD
 
 ## GitHub Action
 
+### First-Time Setup
+
+Use the published action in pull request workflows:
+
+```yaml
+- uses: kingkyylian/shipproof@v0.3.0
+  with:
+    github-token: ${{ github.token }}
+```
+
 Use ShipProof in a pull request workflow after checking out the repository:
 
 ```yaml

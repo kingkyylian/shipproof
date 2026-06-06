@@ -96,7 +96,7 @@ Action inputs still override CI-specific values such as report paths, SARIF path
 - `browser.logDir`: stores dev server stdout and stderr logs.
 - `browser.readyUrl`: overrides the URL used for readiness polling.
 - `browser.timeoutMs`: controls readiness and route navigation timeout.
-- `browser.waitUntil`: controls Playwright route navigation readiness.
+- `browser.waitUntil`: controls Playwright route navigation readiness. Valid values are `load`, `domcontentloaded`, `networkidle`, and `commit`.
 - `security.enabled`: disables security-lite checks when `false`.
 - `security.allow`: suppresses intentional findings when `id`, `file`, optional `line`, `reason`, and non-expired `expiresAt` match.
 - `security.baseline`: marks known existing findings as non-blocking while keeping them visible in reports; expired entries become active findings again.

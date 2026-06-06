@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { loadShipProofConfig, resolveShipProofConfig } from "../src/config.js";
+import { loadShipProofConfig, resolveShipProofConfig, validateShipProofConfig } from "../src/config.js";
 
 describe("resolveShipProofConfig", () => {
   it("returns production defaults when no config is provided", () => {
@@ -117,6 +117,20 @@ describe("loadShipProofConfig", () => {
     assert.equal(config.browser.enabled, true);
   });
 
+  it("rejects invalid config files", async () => {
+    await assert.rejects(
+      () => loadShipProofConfig({
+        filePath: "shipproof.config.json",
+        readFile: async () => JSON.stringify({
+          browser: {
+            waitUntil: "almost-ready"
+          }
+        })
+      }),
+      /browser\.waitUntil must be one of load, domcontentloaded, networkidle, commit\./
+    );
+  });
+
   it("keeps configured security baseline entries", () => {
     const config = resolveShipProofConfig({
       security: {
@@ -157,5 +171,19 @@ describe("loadShipProofConfig", () => {
       "unsafe-cors": "medium",
       "public-storage-policy": "high"
     });
+  });
+});
+
+describe("validateShipProofConfig", () => {
+  it("rejects invalid browser waitUntil values", () => {
+    const result = validateShipProofConfig({
+      browser: {
+        waitUntil: "almost-ready"
+      }
+    });
+
+    assert.deepEqual(result.errors, [
+      "browser.waitUntil must be one of load, domcontentloaded, networkidle, commit."
+    ]);
   });
 });
